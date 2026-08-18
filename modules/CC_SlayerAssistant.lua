@@ -64,6 +64,8 @@ local Module = {
         width = 500, height = 500,
         durationMs = 5000,
         AssignmentByZone = {},
+        enableAutoPrompt = true,
+        enableSound = true,
 
         enableDebug = false,
     },
@@ -122,6 +124,9 @@ end
 function Module:PlayNotification(timeSec)
     local zoneId = CC.GetCurrentTrialZone()
     local sideId = self:GetSideIdFromZoneId(zoneId)
+
+    -- MUTED NOW IF UNASSIGNED. THX LARS FOR THE FEEDBACK!
+    if sideId == self.SIDE_NONE then return end
 
     CC.DisplayNotification:TriggerSlayer(timeSec, sideId)
 end
@@ -345,6 +350,7 @@ function Module:DrawSlayerEffect(unitTag, sideId, customDurationMs)
 
     -- VALID DATA; REMOVE OLD
     self:RemoveSlayerEffect(unitTag, isEquippedLate)
+    if sideId == self.SIDE_NONE then return end
 
     local currentTime = GetGameTimeMilliseconds()
 
@@ -542,7 +548,6 @@ function Module:HandleBroadcast(unitTag, Data)
     -- INCOMING TRIGGER SLAYER
     ----------------------------------------------------------------------------------------------------
     if Data.ID == LUT.SLAYER_TRIGGER then
-
         -- CANCEL RZ == 0
         if Data.RZ == 0 then
             self.activeTriggerEndTime = 0
@@ -723,8 +728,8 @@ function Module:GetMenuOptions()
         self.menuSelectedZone = zoneId
     end
 
-    local VISIBILITY_CHOICES_SELF = { "Visible" }
-    local VISIBILITY_VALUES_SELF  = { self.VISIBILITY_VISIBLE, }
+    local VISIBILITY_CHOICES_SELF = { "Visible", "Muted", "Hidden" }
+    local VISIBILITY_VALUES_SELF  = { self.VISIBILITY_VISIBLE, self.VISIBILITY_MUTED, self.VISIBILITY_HIDDEN }
 
     local VISIBILITY_CHOICES_OTHER = { "Visible", "Muted", "Hidden" }
     local VISIBILITY_VALUES_OTHER  = { self.VISIBILITY_VISIBLE, self.VISIBILITY_MUTED, self.VISIBILITY_HIDDEN, }
@@ -732,11 +737,11 @@ function Module:GetMenuOptions()
     local TRIAL_ZONE_CHOICES = { "General", }
     local TRIAL_ZONE_VALUES = { 0, }
 
-    -- FOR DEBUG / DEV ONLY
-    if GetUnitDisplayName("player") == CC.AUTHOR then
-        VISIBILITY_CHOICES_SELF = { "Visible", "Muted [Dev]", "Hidden [Dev]", }
-        VISIBILITY_VALUES_SELF  = { self.VISIBILITY_VISIBLE, self.VISIBILITY_MUTED, self.VISIBILITY_HIDDEN, }
-    end
+    -- -- FOR DEBUG / DEV ONLY
+    -- if GetUnitDisplayName("player") == CC.AUTHOR then
+    --     VISIBILITY_CHOICES_SELF = { "Visible", "Muted [Dev]", "Hidden [Dev]", }
+    --     VISIBILITY_VALUES_SELF  = { self.VISIBILITY_VISIBLE, self.VISIBILITY_MUTED, self.VISIBILITY_HIDDEN, }
+    -- end
 
     local SortedZones = {}
     for zoneId, zoneName in pairs(CC.TrialZones) do table.insert(SortedZones, { zoneId = zoneId, zoneName = zoneName }) end
@@ -755,7 +760,7 @@ function Module:GetMenuOptions()
         controls = {
             {
                 type = "description",
-                text = "Slayer Assistant for assigned positioning in trials.",
+                text = "Slayer Assistant for assigned positioning and stacking in trials.",
                 width = "full",
             },
             ----------------------------------------------------------------------------------------------------
@@ -763,8 +768,17 @@ function Module:GetMenuOptions()
             ----------------------------------------------------------------------------------------------------
             { type = "header", name = CC.ColorString("ASSIGNMENT FOR YOURSELF", "tier3") },
             {
+                type = "checkbox",
+                name = "Auto-Prompt Assignment on Port",
+                tooltip = "Asks for your assigned side when entering a new trial for the very first time.",
+                getFunc = function() return self.SV.enableAutoPrompt end,
+                setFunc = function(value) self.SV.enableAutoPrompt = value end,
+                default = self.Default.enableAutoPrompt,
+                disabled = function() return not CC.SV.enableAddon end,
+            },
+            {
                 type = "dropdown",
-                name = "Edit Settings For Specific Instance: ",
+                name = "Edit Settings for Specific Instance: ",
                 choices = TRIAL_ZONE_CHOICES,
                 choicesValues = TRIAL_ZONE_VALUES,
                 getFunc = function() return self.menuSelectedZone end,
@@ -783,7 +797,7 @@ function Module:GetMenuOptions()
                 name = function()
                     local zoneId = self.menuSelectedZone or 0
                     local zoneName = self:GetZoneNameFromZoneId(zoneId)
-                    return string.format("Your saved position for %s:", CC.ColorString(string.format("[%s]", zoneName), "tier3"))
+                    return string.format("Your Saved Position for %s:", CC.ColorString(string.format("[%s]", zoneName), "tier3"))
                 end,
                 choices = { "None / Unassigned", "Slayer: Left", "Slayer: Right" },
                 choicesValues = { self.SIDE_NONE, self.SIDE_LEFT, self.SIDE_RIGHT },
@@ -832,7 +846,7 @@ function Module:GetMenuOptions()
             -- },
             {
                 type = "colorpicker",
-                name = "Color: LEFT",
+                name = "Color: Left",
                 getFunc = function() return unpack(self.SV.ColorLeft) end,
                 setFunc = function(r, g, b, a)
                     self.SV.ColorLeft = {r, g, b, a}
@@ -843,7 +857,7 @@ function Module:GetMenuOptions()
             },
             {
                 type = "colorpicker",
-                name = "Color: RIGHT",
+                name = "Color: Right",
                 getFunc = function() return unpack(self.SV.ColorRight) end,
                 setFunc = function(r, g, b, a)
                     self.SV.ColorRight = {r, g, b, a}
@@ -993,6 +1007,14 @@ function Module:GetMenuOptions()
             },
             {
                 type = "divider",
+            },
+            {
+                type = "checkbox",
+                name = "Enable Notification Sound",
+                getFunc = function() return self.SV.enableSound end,
+                setFunc = function(value) self.SV.enableSound = value end,
+                default = self.Default.enableSound,
+                disabled = function() return not CC.SV.enableAddon end,
             },
             {
                 type = "checkbox",

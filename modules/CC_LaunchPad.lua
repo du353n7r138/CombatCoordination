@@ -17,6 +17,25 @@ local Module = {
     TextureChoices = CC.CIRCLE_CHOICES,
     TextureValues  = CC.CIRCLE_VALUES,
 
+    TrialNodeIds = {
+        [636]  = 230, -- Hel Ra Citadel
+        [638]  = 231, -- Aetherian Archive
+        [639]  = 232, -- Sanctum Ophidia
+        [725]  = 258, -- Maw of Lorkhaj
+        [975]  = 331, -- Halls of Fabrication
+        [1000] = 346, -- Asylum Sanctorium
+        [1051] = 364, -- Cloudrest
+        [1121] = 399, -- Sunspire
+        [1196] = 434, -- Kyne's Aegis
+        [1263] = 468, -- Rockgrove
+        [1344] = 488, -- Dreadsail Reef
+        [1427] = 534, -- Sanity's Edge
+        [1478] = 568, -- Lucent Citadel
+        [1548] = 589, -- Ossein Cage
+        [1559] = 616, -- Night Market
+        [1565] = 0,   -- Opulent Ordeal
+    },
+
     TriggerData = {
         ----------------------------------------------------------------------------------------------------
         -- PULL-TIMER 0 .. 15 (OG)
@@ -41,8 +60,25 @@ local Module = {
         [34] = { category = "Arkasis Assistant", name = "Arkasis Timer 5s", shortName = "ARKASIS 5", Color = { 1, 0.875, 0, 0.75 }, Action = function() if CC.ArkasisAssistant then CC.ArkasisAssistant:ArkasisTrigger(true, 5) end end },
 
         ----------------------------------------------------------------------------------------------------
-        -- PREBUFF ASSISTANT 48 .. 63
+        -- PORT INSTANCE 48 .. 79
         ----------------------------------------------------------------------------------------------------
+        [48] = { category = "Port Instance", name = "Port Last Trial", shortName = "PORT LAST", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(CC.LaunchPad.SV.lastTrialZoneId) end },
+        [49] = { category = "Port Instance", name = "Port Hel Ra Citadel", shortName = "PORT HRC", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(636) end },
+        [50] = { category = "Port Instance", name = "Port Aetherian Archive", shortName = "PORT AA", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(638) end },
+        [51] = { category = "Port Instance", name = "Port Sanctum Ophidia", shortName = "PORT SO", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(639) end },
+        [52] = { category = "Port Instance", name = "Port Maw of Lorkhaj", shortName = "PORT MOL", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(725) end },
+        [53] = { category = "Port Instance", name = "Port Halls of Fabrication", shortName = "PORT HOF", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(975) end },
+        [54] = { category = "Port Instance", name = "Port Asylum Sanctorium", shortName = "PORT AS", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1000) end },
+        [55] = { category = "Port Instance", name = "Port Cloudrest", shortName = "PORT CR", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1051) end },
+        [56] = { category = "Port Instance", name = "Port Sunspire", shortName = "PORT SS", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1121) end },
+        [57] = { category = "Port Instance", name = "Port Kyne's Aegis", shortName = "PORT KA", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1196) end },
+        [58] = { category = "Port Instance", name = "Port Rockgrove", shortName = "PORT RG", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1263) end },
+        [59] = { category = "Port Instance", name = "Port Dreadsail Reef", shortName = "PORT DSR", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1344) end },
+        [60] = { category = "Port Instance", name = "Port Sanity's Edge", shortName = "PORT SE", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1427) end },
+        [61] = { category = "Port Instance", name = "Port Lucent Citadel", shortName = "PORT LC", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1478) end },
+        [62] = { category = "Port Instance", name = "Port Ossein Cage", shortName = "PORT OC", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1548) end },
+        [63] = { category = "Port Instance", name = "Port Night Market", shortName = "PORT NM", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1559) end },
+        [64] = { category = "Port Instance", name = "Port Opulent Ordeal", shortName = "PORT OO", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1565) end },
 
         ----------------------------------------------------------------------------------------------------
         -- WIZARDS WARDROBE 512 .. 527
@@ -102,6 +138,7 @@ local Module = {
         fontWeight = "thick-outline",
 
         activeTrigger = 1,
+        lastTrialZoneId = 0,
     },
     ---@type table|any
     SV = {},
@@ -122,6 +159,39 @@ function Module:CustomDisable()
 end
 
 ----------------------------------------------------------------------------------------------------
+-- PORT TO TRIAL (NODE)
+----------------------------------------------------------------------------------------------------
+function Module:PortToTrial(targetZoneId)
+    if not targetZoneId or targetZoneId == 0 then
+        d(string.format("%s %s", CC.CHAT, CC.ColorString("No recent trial instance found.", "RD")))
+        return
+    end
+
+    local trialName = CC.TrialZones[targetZoneId] or "Unknown Trial"
+    local currentZoneId = CC.GetCleanZoneId()
+
+    if currentZoneId == targetZoneId then
+        d(string.format("%s You are already in %s.", CC.CHAT, trialName))
+        return
+    end
+
+    local nodeId = self.TrialNodeIds[targetZoneId]
+    if nodeId and nodeId > 0 then
+
+        zo_callLater(function()
+            FastTravelToNode(nodeId)
+        end, 1000)
+
+
+
+        --FastTravelToNode(nodeId)
+        d(string.format("%s Porting to %s...", CC.CHAT, trialName))
+    else
+        d(string.format("%s %s", CC.CHAT, CC.ColorString("Node for " .. trialName .. " is missing.", "RD")))
+    end
+end
+
+----------------------------------------------------------------------------------------------------
 -- LOAD PADS
 ----------------------------------------------------------------------------------------------------
 function Module:LoadPadsForCurrentZone()
@@ -129,6 +199,13 @@ function Module:LoadPadsForCurrentZone()
 
     local zoneId = GetUnitRawWorldPosition("player")
     if not zoneId or zoneId == 0 then return end
+
+    -- CACHE "PORT LAST"
+    local cleanZoneId = CC.GetCleanZoneId(zoneId)
+    if CC.TrialZones[cleanZoneId] then
+        self.SV.lastTrialZoneId = cleanZoneId
+    end
+
     if not self.SV.SavedPads[zoneId] then return end
 
     for index, PadData in ipairs(self.SV.SavedPads[zoneId]) do
@@ -163,6 +240,7 @@ function Module:DrawPad(index, PadData)
         hasTriggered = false,
         cooldownEndTime = 0,
         isHidden = true,
+        requiresExit = true,
     }
 end
 
@@ -224,9 +302,13 @@ function Module:StartTriggerLoop()
             local distanceSquared = (deltaX * deltaX) + (deltaZ * deltaZ)
             local heightDifference = math.abs(playerY - PadCache.Data.TY)
 
+            local isInside = (distanceSquared <= radiusSquared and heightDifference < 300)
+            if not isInside then PadCache.requiresExit = false end
+
             -- PROXIMITY
             local shouldHide = (distanceSquared > visibilityDistSquared)
             local visualExists = PadCache.effectId and CC.DisplayEffect.TrackedEffects[PadCache.effectId]
+
             if not shouldHide and not visualExists then
                 self:CreatePadVisuals(index, PadCache)
                 if not PadCache.effectId then
@@ -265,8 +347,8 @@ function Module:StartTriggerLoop()
             end
 
             -- TRIGGER
-            if not PadCache.isCooldown then
-                if distanceSquared <= radiusSquared and heightDifference < 500 then
+            if not PadCache.isCooldown and not PadCache.requiresExit then
+                if isInside then
                     PadCache.hasTriggered = true
                     PadCache.cooldownEndTime = currentTime + 1000
                     PadCache.isCooldown = true
@@ -280,10 +362,10 @@ function Module:StartTriggerLoop()
                     local Effect = CC.DisplayEffect.TrackedEffects[PadCache.effectId]
                     if Effect and Effect.Control then
                         local TriggerData = self.TriggerData[PadCache.Data.TRG]
-                        local baseColor = TriggerData and TriggerData.Color or { 1, 1, 1, 0.75 }
-                        local currentAlpha = PadCache.isCooldown and 0.25 or baseColor[4]
+                        local BaseColor = TriggerData and TriggerData.Color or { 1, 1, 1, 0.75 }
+                        local currentAlpha = PadCache.isCooldown and 0.25 or BaseColor[4]
 
-                        Effect.Control:SetColor(baseColor[1], baseColor[2], baseColor[3], currentAlpha)
+                        Effect.Control:SetColor(BaseColor[1], BaseColor[2], BaseColor[3], currentAlpha)
                     end
                 end
 

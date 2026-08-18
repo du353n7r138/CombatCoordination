@@ -70,21 +70,20 @@ end
 function Module:PlayNotification(displayName)
     if not self.SV.enableNotification then return end
 
-    local durationSec = 2.0
     local colorHex = CC.GetHexColorFromArray(self.SV.Color) or "|cBFBFBF"
     local size = math.floor(CC.DisplayNotification.SV.fontSize)
     local iconSkull = string.format("|t%d:%d:/esoui/art/icons/mapkey/mapkey_groupboss.dds|t ", size, size)
 
+    local timeSec = 2.0
     local line1 = iconSkull .. colorHex .. tostring(displayName) .. "|r"
     local line2 = ""
-    local playSound = false
 
     -- TODO: CHANGE TO THIS BREAKING GLASS SOUND LIKE BANDITS HAD?
     if self.SV.volumeNotification > 0 then
         CC.PlaySound(SOUNDS.DUEL_START, self.SV.volumeNotification)
     end
 
-    CC.DisplayNotification:TriggerCustom(durationSec, line1, line2, playSound)
+    CC.DisplayNotification:TriggerCustom(timeSec, line1, line2)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -293,8 +292,10 @@ function Module:GetMenuOptions()
                     local colorHex = CC.GetHexColorFromArray(self.SV.Color) or "|cBFBFBF"
                     local size = math.floor(CC.DisplayNotification.SV.fontSize)
                     local iconSkull = string.format("|t%d:%d:/esoui/art/icons/mapkey/mapkey_groupboss.dds|t ", size, size)
+                    local timeSec = 1.5
                     local line1 = iconSkull .. colorHex .. "@Duesentrieb|r"
-                    if value then CC.DisplayNotification:TriggerCustom(1.5, line1, "", false) end
+                    local line2 = ""
+                    if value then CC.DisplayNotification:TriggerCustom(timeSec, line1, line2) end
                 end,
                 default = self.Default.enableNotification,
                 disabled = function() return not CC.SV.enableAddon end,

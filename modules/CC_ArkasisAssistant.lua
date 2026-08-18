@@ -28,6 +28,10 @@ local Module = {
 
     SET_STATUS_NONE = 0,
 
+    VISIBILITY_VISIBLE = 1,
+    VISIBILITY_MUTED   = 2,
+    VISIBILITY_HIDDEN  = 3,
+
     isReceivingAssignment = false,
     isReceivingStatus = false,
 
@@ -40,6 +44,9 @@ local Module = {
     },
 
     Default = {
+        visibilitySideSelf = 1, -- 1 = VISIBLE
+        visibilitySideOther = 3, -- 3 = HIDDEN
+
         enableGameAoeFriendlyColor = false,
 
         Color      = { 1,    0.875, 0,    0.75 },
@@ -51,6 +58,8 @@ local Module = {
         width = 500, height = 500,
         durationMs = 5000,
         AssignmentByZone = {},
+        enableAutoPrompt = true,
+        enableSound = true,
 
         enableDebug = false,
     },
@@ -109,6 +118,9 @@ end
 function Module:PlayNotification(timeSec)
     local zoneId = CC.GetCurrentTrialZone()
     local sideId = self:GetSideIdFromZoneId(zoneId)
+
+    -- MUTED NOW IF UNASSIGNED. THX LARS FOR THE FEEDBACK!
+    if sideId == self.SIDE_NONE then return end
 
     CC.DisplayNotification:TriggerArkasis(timeSec, sideId)
 end
@@ -304,12 +316,17 @@ function Module:DrawArkasisEffect(unitTag, sideId, customDurationMs)
     if not (TX and TY and TZ) then return end
 
     local playerSideId = self:GetSideIdFromZoneId(zoneId)
+    local isPlayerSide = (sideId == playerSideId)
 
-    -- ONLY SEE OWN TEAM
-    if playerSideId ~= self.SIDE_NONE and sideId ~= playerSideId then return end
+    if isPlayerSide then
+        if self.SV.visibilitySideSelf == self.VISIBILITY_HIDDEN then return end
+    else
+        if self.SV.visibilitySideOther == self.VISIBILITY_HIDDEN then return end
+    end
 
     local isEquippedLate = customDurationMs and customDurationMs < self.SV.durationMs
     self:RemoveArkasisEffect(unitTag, isEquippedLate)
+    if sideId == self.SIDE_NONE then return end
 
     local currentTime = GetGameTimeMilliseconds()
 
@@ -331,9 +348,23 @@ function Module:DrawArkasisEffect(unitTag, sideId, customDurationMs)
     local textureOutline = self.SV.textureOutline or self.TEXTURE_OUTLINE_BASE
     local textureInner   = self:GetTextureFromSideId(sideId)
 
-    local BaseColor = self.SV.enableGameAoeFriendlyColor and CC.GetGameAoeFriendlyColor() or ((sideId == self.SIDE_NONE) and self.SV.ColorNone or self.SV.Color)
+    local BaseColor = self.SV.enableGameAoeFriendlyColor and CC.GetGameAoeFriendlyColor() or self.SV.Color
 
-    local ColorEnd   = { BaseColor[1] or 1, BaseColor[2] or 1, BaseColor[3] or 1, BaseColor[4] or 1 }
+    local shouldMute = false
+    if isPlayerSide then
+        if self.SV.visibilitySideSelf == self.VISIBILITY_MUTED then shouldMute = true end
+    else
+        if self.SV.visibilitySideOther == self.VISIBILITY_MUTED then shouldMute = true end
+    end
+
+    local Color
+    if shouldMute then
+        Color = {0.5, 0.5, 0.5, 0.75}
+    else
+        Color = BaseColor
+    end
+
+    local ColorEnd   = { Color[1] or 1, Color[2] or 1, Color[3] or 1, Color[4] or 1 }
     local ColorStart = { ColorEnd[1] / 2, ColorEnd[2] / 2, ColorEnd[3] / 2, 0 }
     local ColorFlash = self.SV.ColorFlash
 
@@ -625,6 +656,9 @@ function Module:GetMenuOptions()
         self.menuSelectedZone = zoneId
     end
 
+    local VISIBILITY_CHOICES = { "Visible", "Muted", "Hidden" }
+    local VISIBILITY_VALUES  = { self.VISIBILITY_VISIBLE, self.VISIBILITY_MUTED, self.VISIBILITY_HIDDEN }
+
     local TRIAL_ZONE_CHOICES = { "General", }
     local TRIAL_ZONE_VALUES = { 0, }
 
@@ -653,8 +687,17 @@ function Module:GetMenuOptions()
             ----------------------------------------------------------------------------------------------------
             { type = "header", name = CC.ColorString("ASSIGNMENT FOR YOURSELF", "tier3") },
             {
+                type = "checkbox",
+                name = "Auto-Prompt Assignment on Port",
+                tooltip = "Asks for your assigned stack when entering a new trial for the very first time.",
+                getFunc = function() return self.SV.enableAutoPrompt end,
+                setFunc = function(value) self.SV.enableAutoPrompt = value end,
+                default = self.Default.enableAutoPrompt,
+                disabled = function() return not CC.SV.enableAddon end,
+            },
+            {
                 type = "dropdown",
-                name = "Edit Settings For Specific Instance: ",
+                name = "Edit Settings for Specific Instance: ",
                 choices = TRIAL_ZONE_CHOICES,
                 choicesValues = TRIAL_ZONE_VALUES,
                 getFunc = function() return self.menuSelectedZone end,
@@ -673,7 +716,7 @@ function Module:GetMenuOptions()
                 name = function()
                     local zoneId = self.menuSelectedZone or 0
                     local zoneName = self:GetZoneNameFromZoneId(zoneId)
-                    return string.format("Your saved stack for %s:", CC.ColorString(string.format("[%s]", zoneName), "tier3"))
+                    return string.format("Your Saved Stack for %s:", CC.ColorString(string.format("[%s]", zoneName), "tier3"))
                 end,
                 choices = { "None / Unassigned", "Stack 1", "Stack 2", "Stack 3" },
                 choicesValues = { self.SIDE_NONE, self.SIDE_1, self.SIDE_2, self.SIDE_3 },
@@ -692,6 +735,26 @@ function Module:GetMenuOptions()
             -- VISUALS & COLOR
             ----------------------------------------------------------------------------------------------------
             { type = "header", name = CC.ColorString("VISUALS & COLOR FOR YOURSELF", "tier3") },
+            {
+                type = "dropdown",
+                name = "Visibility: Same Stack",
+                choices = VISIBILITY_CHOICES,
+                choicesValues = VISIBILITY_VALUES,
+                getFunc = function() return self.SV.visibilitySideSelf end,
+                setFunc = function(value) self.SV.visibilitySideSelf = value end,
+                default = self.Default.visibilitySideSelf,
+                disabled = function() return not CC.SV.enableAddon end,
+            },
+            {
+                type = "dropdown",
+                name = "Visibility: Other Stacks",
+                choices = VISIBILITY_CHOICES,
+                choicesValues = VISIBILITY_VALUES,
+                getFunc = function() return self.SV.visibilitySideOther end,
+                setFunc = function(value) self.SV.visibilitySideOther = value end,
+                default = self.Default.visibilitySideOther,
+                disabled = function() return not CC.SV.enableAddon end,
+            },
             {
                 type = "checkbox",
                 name = "Enable Game AOE Color",
@@ -839,6 +902,14 @@ function Module:GetMenuOptions()
             },
             {
                 type = "divider",
+            },
+            {
+                type = "checkbox",
+                name = "Enable Notification Sound",
+                getFunc = function() return self.SV.enableSound end,
+                setFunc = function(value) self.SV.enableSound = value end,
+                default = self.Default.enableSound,
+                disabled = function() return not CC.SV.enableAddon end,
             },
             {
                 type = "checkbox",

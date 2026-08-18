@@ -511,7 +511,7 @@ function Module:GetMenuOptions()
             },
             {
                 type = "checkbox",
-                name = "Print Coordinates To Chat",
+                name = "Print Coordinates to Chat",
                 getFunc = function() return self.SV.enablePrintChat end,
                 setFunc = function(value) self.SV.enablePrintChat = value end,
                 default = self.Default.enablePrintChat,

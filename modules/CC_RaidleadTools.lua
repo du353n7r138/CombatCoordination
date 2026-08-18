@@ -285,7 +285,8 @@ function Module:FinishVote()
 
     local stringResult = string.format("|c00FF00YES: %d|r - |cFF0000NO: %d|r - |cFFDF00IDC: %d|r", self.VoteData.yes, self.VoteData.no, self.VoteData.idc)
     d(string.format("%s Vote finished! ", CC.CHAT) .. stringResult)
-    CC.DisplayNotification:TriggerCustom(5, "VOTE FINISHED!", stringResult, false)
+    local timeSec = 5.0
+    CC.DisplayNotification:TriggerCustom(timeSec, "VOTE FINISHED!", stringResult)
 
     PlaySound(SOUNDS.LEVEL_UP)
 
@@ -386,8 +387,9 @@ function Module:HandleBroadcast(unitTag, Data)
                     CC.DisplayPanel:UpdateData()
                 end
 
+                local timeSec = 1.0
                 local stringResult = string.format("|c00FF00YES: %d|r - |cFF0000NO: %d|r - |cFFDF00IDC: %d|r", self.VoteData.yes, self.VoteData.no, self.VoteData.idc)
-                CC.DisplayNotification:TriggerCustom(1.0, replyName, stringResult, false)
+                CC.DisplayNotification:TriggerCustom(timeSec, replyName, stringResult)
 
                 CC.PlaySound(SOUNDS.COUNTDOWN_TICK, 2)
 

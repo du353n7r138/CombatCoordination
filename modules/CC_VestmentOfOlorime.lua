@@ -48,7 +48,7 @@ local Module = {
 function Module:PlayNotification()
     if not self.SV.enableNotification then return end
 
-    local durationSec = 1.0
+    local timeSec = 1.0
     local colorHex = ""
 
     if self.SV.enableGameAoeFriendlyColor then
@@ -64,7 +64,7 @@ function Module:PlayNotification()
         CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, self.SV.volumeNotification)
     end
 
-    CC.DisplayNotification:TriggerCustom(durationSec, line1, line2, false)
+    CC.DisplayNotification:TriggerCustom(timeSec, line1, line2)
 end
 
 ----------------------------------------------------------------------------------------------------

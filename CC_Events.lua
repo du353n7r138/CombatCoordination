@@ -180,19 +180,15 @@ function Module:OnPlayerActivated()
     local zoneId = CC.GetCleanZoneId()
     if zoneId ~= 0 then
         -- CHECK SLAYER
-        local slayerSide = CC.SlayerAssistant:GetSideIdFromZoneId(zoneId)
-        if slayerSide == CC.SlayerAssistant.SIDE_NONE then
+        if CC.SlayerAssistant.SV.enableAutoPrompt and CC.SlayerAssistant.SV.AssignmentByZone[zoneId] == nil then
             local zoneName = CC.SlayerAssistant:GetZoneNameFromZoneId(zoneId)
-            local sideName = CC.SlayerAssistant:GetSideNameFromSideId(slayerSide)
-            CC.DisplayDialog:RequestSlayer(zoneId, zoneName, sideName)
+            CC.DisplayDialog:RequestSlayer(zoneId, zoneName, "None / Unassigned")
         end
 
         -- CHECK ARKASIS
-        local arkasisSide = CC.ArkasisAssistant:GetSideIdFromZoneId(zoneId)
-        if arkasisSide == CC.ArkasisAssistant.SIDE_NONE then
+        if CC.ArkasisAssistant.SV.enableAutoPrompt and CC.ArkasisAssistant.SV.AssignmentByZone[zoneId] == nil then
             local zoneName = CC.ArkasisAssistant:GetZoneNameFromZoneId(zoneId)
-            local sideName = CC.ArkasisAssistant:GetSideNameFromSideId(arkasisSide)
-            CC.DisplayDialog:RequestArkasis(zoneId, zoneName, sideName)
+            CC.DisplayDialog:RequestArkasis(zoneId, zoneName, "None / Unassigned")
         end
     end
 

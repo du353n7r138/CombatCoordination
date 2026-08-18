@@ -74,7 +74,7 @@ function CC.CreateModuleSettings(self, menuName, iconPath)
     if self.Default.enableDrawSelf ~= nil then
         table.insert(ModuleControls, {
             type = "checkbox",
-            name = hasDrawGroup and "Enable Visuals For Your Casts" or "Enable Visuals",
+            name = hasDrawGroup and "Enable Visuals for Your Casts" or "Enable Visuals",
             getFunc = function() return self.SV.enableDrawSelf end,
             setFunc = function(value) self.SV.enableDrawSelf = value end,
             default = self.Default.enableDrawSelf,
@@ -85,7 +85,7 @@ function CC.CreateModuleSettings(self, menuName, iconPath)
     if hasDrawGroup then
         table.insert(ModuleControls, {
             type = "checkbox",
-            name = "Enable Visuals For Group Member Casts",
+            name = "Enable Visuals for Group Member Casts",
             getFunc = function() return self.SV.enableDrawGroup end,
             setFunc = function(value) self.SV.enableDrawGroup = value end,
             default = self.Default.enableDrawGroup,
@@ -323,7 +323,7 @@ function CC.CreateSettings()
                         CC.DisplayNotification.SV.fontSize = value
                         if CC.DisplayNotification.LabelLine1 then
                             CC.DisplayNotification:UpdateDimensions()
-                            CC.DisplayNotification:TriggerCustom(1.5, "Notification", "Preview", false)
+                            CC.DisplayNotification:TriggerCustom(1.5, "Notification", "Preview")
                         end
                     end,
                     default = CC.DisplayNotification.Default.fontSize,
@@ -340,7 +340,7 @@ function CC.CreateSettings()
                         CC.DisplayNotification.SV.fontStyle = value
                         if CC.DisplayNotification.LabelLine1 then
                             CC.DisplayNotification:UpdateDimensions()
-                            CC.DisplayNotification:TriggerCustom(1.5, "Notification", "Preview", false)
+                            CC.DisplayNotification:TriggerCustom(1.5, "Notification", "Preview")
                         end
                     end,
                     default = CC.DisplayNotification.Default.fontStyle,
@@ -357,7 +357,7 @@ function CC.CreateSettings()
                         CC.DisplayNotification.SV.fontWeight = value
                         if CC.DisplayNotification.LabelLine1 then
                             CC.DisplayNotification:UpdateDimensions()
-                            CC.DisplayNotification:TriggerCustom(1.5, "Notification", "Preview", false)
+                            CC.DisplayNotification:TriggerCustom(1.5, "Notification", "Preview")
                         end
                     end,
                     default = CC.DisplayNotification.Default.fontWeight,
@@ -372,7 +372,7 @@ function CC.CreateSettings()
                         CC.DisplayNotification.SV.ColorLine1 = {r, g, b, a}
                         CC.DisplayNotification.SV.ColorLine2 = {r, g, b, a}
                         if CC.DisplayNotification.LabelLine1 then
-                            CC.DisplayNotification:TriggerCustom(1.5, "Notification", "Preview", false)
+                            CC.DisplayNotification:TriggerCustom(1.5, "Notification", "Preview")
                         end
                     end,
                     default = CC.GetRgbaFromArray(CC.DisplayNotification.Default.ColorLine1),

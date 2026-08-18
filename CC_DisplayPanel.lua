@@ -13,7 +13,7 @@ local Module = {
     SlayerSetUserLabels = {},
     ArkasisUserLabels = {},
 
-    maxLenghtDisplayname = 14,
+    maxLengthDisplayName = 14,
 
     -------------------------------------------------------------------------------------------------
     -- COLORS
@@ -144,7 +144,7 @@ function Module:CreatePanel()
     ButtonMenu:SetHandler("OnMouseEnter", function(Control)
         ButtonMenuIcon:SetColor(unpack(self.ESO_HIGHLIGHT))
         InitializeTooltip(InformationTooltip, Control, BOTTOM, 0, 5)
-        SetTooltipText(InformationTooltip, "Open Menu")
+        SetTooltipText(InformationTooltip, "Open menu")
     end)
     ButtonMenu:SetHandler("OnMouseExit", function(Control)
         ButtonMenuIcon:SetColor(unpack(self.ESO_MUTED))
@@ -175,7 +175,7 @@ function Module:CreatePanel()
     ButtonClose:SetHandler("OnMouseEnter", function(Control)
         ButtonCloseIcon:SetColor(unpack(self.ESO_HIGHLIGHT))
         InitializeTooltip(InformationTooltip, Control, BOTTOM, 0, 5)
-        SetTooltipText(InformationTooltip, "Close Panel")
+        SetTooltipText(InformationTooltip, "Close panel")
     end)
     ButtonClose:SetHandler("OnMouseExit", function(Control)
         ButtonCloseIcon:SetColor(unpack(self.ESO_MUTED))
@@ -201,7 +201,7 @@ function Module:CreatePanel()
     ButtonMinimize:SetHandler("OnMouseEnter", function(Control)
         ButtonMinimizeIcon:SetColor(unpack(self.ESO_HIGHLIGHT))
         InitializeTooltip(InformationTooltip, Control, BOTTOM, 0, 5)
-        SetTooltipText(InformationTooltip, self.SV.isMinimized and "Maximize Panel" or "Minimize Panel")
+        SetTooltipText(InformationTooltip, self.SV.isMinimized and "Maximize panel" or "Minimize panel")
     end)
     ButtonMinimize:SetHandler("OnMouseExit", function(Control)
         ButtonMinimizeIcon:SetColor(unpack(self.ESO_MUTED))
@@ -862,7 +862,7 @@ end
 -- SHORT(ER) DISPLAY NAME BECAUSE OF KENDRASMYNAMEISUNNECESSARYLONGKENPACHI
 ----------------------------------------------------------------------------------------------------
 function Module:GetShortName(longName, maxLength)
-    local limit = maxLength or self.maxLenghtDisplayname
+    local limit = maxLength or self.maxLengthDisplayName
     local shortName = tostring(longName)
 
     if zo_strlen(shortName) > limit then
@@ -953,7 +953,7 @@ function Module:UpdateData()
                 extraInfo = string.format(" - %s / %s", stringSlayer, stringArkasis)
             end
 
-            local shortName = self:GetShortName(displayName, self.maxLenghtDisplayname)
+            local shortName = self:GetShortName(displayName, self.maxLengthDisplayName)
             Label:SetText(string.format("%d) |cFFFFFF%s|r%s (%d ms)%s", self.activeAddonUserLabels, shortName, isRaidlead, numPing, extraInfo))
         end
     end
@@ -1072,10 +1072,16 @@ function Module:UpdateData()
                 local Label = self:GetOrCreateLabel(self.SlayerSetUserLabels, "SlayerSetUserLabels", self.activeSlayerSetUserLabels, self.ContainerSlayerAssistant.Content, TEXT_ALIGN_LEFT)
 
                 local isEquipped = User.SlayerAssistant.isEquipped or CC.SlayerAssistant.SET_STATUS_NONE
-                local setName = CC.SlayerAssistant:GetSetNameFromStatusId(isEquipped)
-                local shortName = self:GetShortName(displayName, self.maxLenghtDisplayname)
+                local shortName = self:GetShortName(displayName, self.maxLengthDisplayName)
                 local sideName = CC.SlayerAssistant:GetSideNameFromSideId(User.SlayerAssistant.sideId)
-                Label:SetText(string.format("Set: |cFFFFFF[%s]|r - %s - %s", setName, shortName, sideName))
+
+                local stringSet = ""
+                if isEquipped ~= CC.SlayerAssistant.SET_STATUS_NONE then
+                    local setName = CC.SlayerAssistant:GetSetNameFromStatusId(isEquipped)
+                    stringSet = string.format(" - |cFFFFFF[%s]|r", setName)
+                end
+
+                Label:SetText(string.format("%s - %s%s", shortName, sideName, stringSet))
             end
         end
     end
@@ -1115,10 +1121,16 @@ function Module:UpdateData()
                 local Label = self:GetOrCreateLabel(self.ArkasisUserLabels, "ArkasisUserLabels", self.activeArkasisUserLabels, self.ContainerArkasisAssistant.Content, TEXT_ALIGN_LEFT)
 
                 local isEquipped = User.ArkasisAssistant.isEquipped or CC.ArkasisAssistant.SET_STATUS_NONE
-                local setName = CC.ArkasisAssistant:GetSetNameFromStatusId(isEquipped)
-                local shortName = self:GetShortName(displayName, self.maxLenghtDisplayname)
+                local shortName = self:GetShortName(displayName, self.maxLengthDisplayName)
                 local sideName = CC.ArkasisAssistant:GetSideNameFromSideId(User.ArkasisAssistant.sideId)
-                Label:SetText(string.format("Set: |cFFFFFF[%s]|r - %s - %s", setName, shortName, sideName))
+
+                local stringSet = ""
+                if isEquipped ~= CC.ArkasisAssistant.SET_STATUS_NONE then
+                    local setName = CC.ArkasisAssistant:GetSetNameFromStatusId(isEquipped)
+                    stringSet = string.format(" - |cFFFFFF[%s]|r", setName)
+                end
+
+                Label:SetText(string.format("%s - %s%s", shortName, sideName, stringSet))
             end
         end
     end

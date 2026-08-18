@@ -611,7 +611,7 @@ function Module:TriggerSlayer(timeSec, sideId, targetName)
     EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
     EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Notification_UpdateLoop", 100, function() self:UpdateTick() end)
 
-    if self.SV.enableSound then
+    if CC.SlayerAssistant.SV.enableSound then
         CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, 2)
     end
 
@@ -642,7 +642,7 @@ function Module:TriggerArkasis(timeSec, sideId)
     EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
     EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Notification_UpdateLoop", 100, function() self:UpdateTick() end)
 
-    if self.SV.enableSound then
+    if CC.ArkasisAssistant.SV.enableSound then
         CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, 2)
     end
 

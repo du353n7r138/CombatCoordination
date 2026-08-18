@@ -125,7 +125,21 @@ function Module:CreateDialog()
 
     ButtonClose:SetHandler("OnMouseEnter", function() ButtonCloseIcon:SetColor(unpack(self.ESO_HIGHLIGHT)) end)
     ButtonClose:SetHandler("OnMouseExit", function() ButtonCloseIcon:SetColor(unpack(self.ESO_MUTED)) end)
-    ButtonClose:SetHandler("OnMouseUp", function() self:HideAll() end)
+    ButtonClose:SetHandler("OnMouseUp", function()
+        if self.isSlayerRequested then
+            local currentSide = CC.SlayerAssistant:GetSideIdFromZoneId(self.Data.slayerZoneId)
+            if currentSide == CC.SlayerAssistant.SIDE_NONE then
+                CC.SlayerAssistant:AssignPlayerSide(CC.SlayerAssistant.SIDE_NONE, self.Data.slayerZoneId, true)
+            end
+        end
+        if self.isArkasisRequested then
+            local currentSide = CC.ArkasisAssistant:GetSideIdFromZoneId(self.Data.arkasisZoneId)
+            if currentSide == CC.ArkasisAssistant.SIDE_NONE then
+                CC.ArkasisAssistant:AssignPlayerSide(CC.ArkasisAssistant.SIDE_NONE, self.Data.arkasisZoneId, true)
+            end
+        end
+        self:HideAll()
+    end)
 
     ButtonClose.ResetVisuals = function()
         ButtonCloseIcon:SetColor(unpack(self.ESO_MUTED))
@@ -325,6 +339,13 @@ function Module:BuildSlayerContainer()
         self.isSlayerRequested = false
         self:UpdateDimensions()
     end)
+
+    self.ButtonSlayerUnassigned = self:CreateButton("CC_DisplayDialog_ButtonSlayerUnassigned", Content, "NONE", function()
+        CC.SlayerAssistant:AssignPlayerSide(CC.SlayerAssistant.SIDE_NONE, self.Data.slayerZoneId)
+        self.isSlayerRequested = false
+        self:UpdateDimensions()
+    end)
+    self.ButtonSlayerUnassigned:SetCustomColors(self.ESO_MUTED)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -357,6 +378,13 @@ function Module:BuildArkasisContainer()
         self.isArkasisRequested = false
         self:UpdateDimensions()
     end)
+
+    self.ButtonArkasisUnassigned = self:CreateButton("CC_DisplayDialog_ButtonArkasisUnassigned", Content, "NONE", function()
+        CC.ArkasisAssistant:AssignPlayerSide(CC.ArkasisAssistant.SIDE_NONE, self.Data.arkasisZoneId)
+        self.isArkasisRequested = false
+        self:UpdateDimensions()
+    end)
+    self.ButtonArkasisUnassigned:SetCustomColors(self.ESO_MUTED)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -568,6 +596,7 @@ function Module:UpdateDimensions()
         self.SlayerInfoLabel:ClearAnchors()
         self.ButtonSlayerLeft:ClearAnchors()
         self.ButtonSlayerRight:ClearAnchors()
+        self.ButtonSlayerUnassigned:ClearAnchors()
 
         local innerY = Layout.padding
         local availableWidth = width - (2 * Layout.padding)
@@ -575,12 +604,15 @@ function Module:UpdateDimensions()
         self.SlayerInfoLabel:SetAnchor(TOP, Content, TOP, 0, innerY)
         innerY = innerY + self.SlayerInfoLabel:GetTextHeight() + Layout.padding
 
-        local buttonWidth = (availableWidth - Layout.elementSpacing) / 2
+        local buttonWidth = (availableWidth - (2 * Layout.elementSpacing)) / 3
         self.ButtonSlayerLeft:SetDimensions(buttonWidth, Layout.elementHeight)
         self.ButtonSlayerLeft:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
         self.ButtonSlayerRight:SetDimensions(buttonWidth, Layout.elementHeight)
-        self.ButtonSlayerRight:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
+        self.ButtonSlayerRight:SetAnchor(TOPLEFT, self.ButtonSlayerLeft, TOPRIGHT, Layout.elementSpacing, 0)
+
+        self.ButtonSlayerUnassigned:SetDimensions(buttonWidth, Layout.elementHeight)
+        self.ButtonSlayerUnassigned:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
         return innerY + Layout.elementHeight
     end)
@@ -593,6 +625,7 @@ function Module:UpdateDimensions()
         self.ButtonArkasis1:ClearAnchors()
         self.ButtonArkasis2:ClearAnchors()
         self.ButtonArkasis3:ClearAnchors()
+        self.ButtonArkasisUnassigned:ClearAnchors()
 
         local innerY = Layout.padding
         local availableWidth = width - (2 * Layout.padding)
@@ -600,15 +633,21 @@ function Module:UpdateDimensions()
         self.ArkasisInfoLabel:SetAnchor(TOP, Content, TOP, 0, innerY)
         innerY = innerY + self.ArkasisInfoLabel:GetTextHeight() + Layout.padding
 
-        local buttonWidth = (availableWidth - (2 * Layout.elementSpacing)) / 3
+        local buttonWidth = (availableWidth - Layout.elementSpacing) / 2
+
         self.ButtonArkasis1:SetDimensions(buttonWidth, Layout.elementHeight)
         self.ButtonArkasis1:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
         self.ButtonArkasis2:SetDimensions(buttonWidth, Layout.elementHeight)
-        self.ButtonArkasis2:SetAnchor(TOPLEFT, self.ButtonArkasis1, TOPRIGHT, Layout.elementSpacing, 0)
+        self.ButtonArkasis2:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
+
+        innerY = innerY + Layout.elementHeight + Layout.elementSpacing
 
         self.ButtonArkasis3:SetDimensions(buttonWidth, Layout.elementHeight)
-        self.ButtonArkasis3:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
+        self.ButtonArkasis3:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+
+        self.ButtonArkasisUnassigned:SetDimensions(buttonWidth, Layout.elementHeight)
+        self.ButtonArkasisUnassigned:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
         return innerY + Layout.elementHeight
     end)
