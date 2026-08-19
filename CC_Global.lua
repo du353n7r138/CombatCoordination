@@ -4,8 +4,8 @@
 CombatCoordination = {
     NAME    = "CombatCoordination",
     AUTHOR  = "@Duesentrieb",
-    ADDON   = 0005,
-    VERSION = "20260818",
+    ADDON   = 0006,
+    VERSION = "20260819",
     CHAT    = "|cFF7F00[CC]|r",
 
     ----------------------------------------------------------------------------------------------------

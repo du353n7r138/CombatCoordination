@@ -34,6 +34,53 @@ local Module = {
 }
 
 ----------------------------------------------------------------------------------------------------
+-- PERMANENT CIRCLE ON SELF
+----------------------------------------------------------------------------------------------------
+function Module:DrawPermanentCircle(diameter)
+    local trackingKey = "DrawShape_DrawPermanentCircle"
+
+    if not diameter or diameter <= 0 then
+        if CC.DisplayEffect.EffectTimers[trackingKey] then
+            CC.DisplayEffect:RemoveTrackedEffect(CC.DisplayEffect.EffectTimers[trackingKey].effectId)
+            CC.DisplayEffect.EffectTimers[trackingKey] = nil
+            d(CC.CHAT .. " Local circle removed.")
+        else
+            d(CC.CHAT .. " /cc_circle <diameter in meters> (/cc_circle 10)")
+        end
+        return
+    end
+
+    if CC.DisplayEffect.EffectTimers[trackingKey] then
+        CC.DisplayEffect:RemoveTrackedEffect(CC.DisplayEffect.EffectTimers[trackingKey].effectId)
+    end
+
+    local _, TX, TY, TZ = GetUnitRawWorldPosition("player")
+    if not TX then return end
+
+    local effectId = CC.DisplayEffect:Draw3DEffect({
+        ID = trackingKey,
+        unitTag = "player",
+
+        TX = TX, RX = -(math.pi / 2), FX = false,
+        TY = TY, RY = 0,              FY = false,
+        TZ = TZ, RZ = 0,              FZ = false,
+
+        width = diameter * 100,
+        height = diameter * 100,
+
+        texture = "/textures/circle_4_clean.dds",
+        durationMs = 0,
+        ColorStart = { 1, 1, 1, 0.1 },
+    })
+
+    local currentTime = GetGameTimeMilliseconds()
+    CC.DisplayEffect.EffectTimers[trackingKey] = { currentTime = currentTime, startTime = currentTime, effectId = effectId }
+
+    d(string.format("%s Local circle drawn. Diameter: %dm.", CC.CHAT, diameter))
+end
+SLASH_COMMANDS["/cc_circle"] = function(diameter) CC.DrawShape:DrawPermanentCircle(tonumber(diameter)) end
+
+----------------------------------------------------------------------------------------------------
 -- CUSTOM ENABLE
 ----------------------------------------------------------------------------------------------------
 function Module:CustomEnable()

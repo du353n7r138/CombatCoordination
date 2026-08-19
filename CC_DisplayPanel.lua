@@ -799,10 +799,6 @@ function Module:BuildSlayerAssistantContainer()
     self.SlayerAssistantPositionLabel:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
     self.SlayerAssistantPositionLabel:SetVerticalAlignment(TEXT_ALIGN_CENTER)
 
-    self.SlayerAssistantButtonTrigger = self:CreateButton("CC_DisplayPanel_SlayerAssistantButtonTrigger", Content, "TRIGGER SLAYER", function()
-        CC.SlayerAssistant:SlayerTrigger(true)
-    end)
-
     self.SlayerAssistantButtonAssign = self:CreateButton("CC_DisplayPanel_SlayerAssistantButtonAssign", Content, "REQ ASSIGN", function()
         CC.SlayerAssistant:SendAssignmentRequest()
     end)
@@ -818,6 +814,26 @@ function Module:BuildSlayerAssistantContainer()
     self.SlayerAssistantButtonSetRight = self:CreateButton("CC_DisplayPanel_SlayerAssistantButtonSetRight", Content, "SET RIGHT", function()
         CC.SlayerAssistant:AssignPlayerSide(CC.SlayerAssistant.SIDE_RIGHT)
     end)
+
+    local function ChangeSlayerSeconds(amount)
+        local currentSec = (CC.SlayerAssistant.SV.durationMs / 1000) or 5
+        local newSec = math.max(1, math.min(15, currentSec + amount))
+        CC.SlayerAssistant.SV.durationMs = newSec * 1000
+        self:UpdateData()
+    end
+
+    self.SlayerAssistantButtonToggle = self:CreateButton("CC_DisplayPanel_SlayerAssistantButtonToggle", Content, "START SLAYER", function()
+        if CC.DisplayNotification.slayerEndTime > GetGameTimeSeconds() then
+            CC.SlayerAssistant:SlayerTrigger(true, 0)
+        else
+            CC.SlayerAssistant:SlayerTrigger(true)
+        end
+    end)
+
+    self.SlayerAssistantButtonMinus5 = self:CreateButton("CC_DisplayPanel_SlayerAssistantMinus5", Content, "<<", function() ChangeSlayerSeconds(-5) end)
+    self.SlayerAssistantButtonMinus1 = self:CreateButton("CC_DisplayPanel_SlayerAssistantMinus1", Content, "<", function() ChangeSlayerSeconds(-1) end)
+    self.SlayerAssistantButtonPlus1  = self:CreateButton("CC_DisplayPanel_SlayerAssistantPlus1", Content, ">", function() ChangeSlayerSeconds(1) end)
+    self.SlayerAssistantButtonPlus5  = self:CreateButton("CC_DisplayPanel_SlayerAssistantPlus5", Content, ">>", function() ChangeSlayerSeconds(5) end)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -832,10 +848,6 @@ function Module:BuildArkasisAssistantContainer()
     self.ArkasisAssistantPositionLabel:SetColor(unpack(self.ESO_NORMAL))
     self.ArkasisAssistantPositionLabel:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
     self.ArkasisAssistantPositionLabel:SetVerticalAlignment(TEXT_ALIGN_CENTER)
-
-    self.ArkasisAssistantButtonTrigger = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonTrigger", Content, "TRIGGER ARKASIS", function()
-        CC.ArkasisAssistant:ArkasisTrigger(true)
-    end)
 
     self.ArkasisAssistantButtonAssign = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonAssign", Content, "REQ ASSIGN", function()
         CC.ArkasisAssistant:SendAssignmentRequest()
@@ -856,6 +868,26 @@ function Module:BuildArkasisAssistantContainer()
     self.ArkasisAssistantButtonSet3 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonSet3", Content, "STACK 3", function()
         CC.ArkasisAssistant:AssignPlayerSide(CC.ArkasisAssistant.SIDE_3)
     end)
+
+    local function ChangeArkasisSeconds(amount)
+        local currentSec = (CC.ArkasisAssistant.SV.durationMs / 1000) or 5
+        local newSec = math.max(1, math.min(15, currentSec + amount))
+        CC.ArkasisAssistant.SV.durationMs = newSec * 1000
+        self:UpdateData()
+    end
+
+    self.ArkasisAssistantButtonToggle = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonToggle", Content, "START ARKASIS", function()
+        if CC.DisplayNotification.arkasisEndTime > GetGameTimeSeconds() then
+            CC.ArkasisAssistant:ArkasisTrigger(true, 0)
+        else
+            CC.ArkasisAssistant:ArkasisTrigger(true)
+        end
+    end)
+
+    self.ArkasisAssistantButtonMinus5 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantMinus5", Content, "<<", function() ChangeArkasisSeconds(-5) end)
+    self.ArkasisAssistantButtonMinus1 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantMinus1", Content, "<", function() ChangeArkasisSeconds(-1) end)
+    self.ArkasisAssistantButtonPlus1  = self:CreateButton("CC_DisplayPanel_ArkasisAssistantPlus1", Content, ">", function() ChangeArkasisSeconds(1) end)
+    self.ArkasisAssistantButtonPlus5  = self:CreateButton("CC_DisplayPanel_ArkasisAssistantPlus5", Content, ">>", function() ChangeArkasisSeconds(5) end)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -1092,12 +1124,12 @@ function Module:UpdateData()
     -- BUTTON TEXT
     if CC.DisplayNotification.slayerEndTime > currentTime then
         local remaining = math.ceil(CC.DisplayNotification.slayerEndTime - currentTime)
-        self.SlayerAssistantButtonTrigger:SetText(string.format("STOP SLAYER %d Sec", remaining))
-        self.SlayerAssistantButtonTrigger:SetCustomColors(self.RD_NORMAL)
+        self.SlayerAssistantButtonToggle:SetText(string.format("SLAYER %d Sec", remaining))
+        self.SlayerAssistantButtonToggle:SetCustomColors(self.RD_NORMAL)
     else
         local configuredSecs = (CC.SlayerAssistant.SV.durationMs / 1000) or 5
-        self.SlayerAssistantButtonTrigger:SetText(string.format("TRIGGER SLAYER %d Sec", configuredSecs))
-        self.SlayerAssistantButtonTrigger:SetCustomColors(self.GN_NORMAL)
+        self.SlayerAssistantButtonToggle:SetText(string.format("SLAYER %d Sec", configuredSecs))
+        self.SlayerAssistantButtonToggle:SetCustomColors(self.GN_NORMAL)
     end
 
     ----------------------------------------------------------------------------------------------------
@@ -1151,12 +1183,12 @@ function Module:UpdateData()
 
     if CC.DisplayNotification.arkasisEndTime > currentTime then
         local remaining = math.ceil(CC.DisplayNotification.arkasisEndTime - currentTime)
-        self.ArkasisAssistantButtonTrigger:SetText(string.format("STOP ARKASIS %d Sec", remaining))
-        self.ArkasisAssistantButtonTrigger:SetCustomColors(self.RD_NORMAL)
+        self.ArkasisAssistantButtonToggle:SetText(string.format("ARKASIS %d Sec", remaining))
+        self.ArkasisAssistantButtonToggle:SetCustomColors(self.RD_NORMAL)
     else
         local configuredSecs = (CC.ArkasisAssistant.SV.durationMs / 1000) or 5
-        self.ArkasisAssistantButtonTrigger:SetText(string.format("TRIGGER ARKASIS %d Sec", configuredSecs))
-        self.ArkasisAssistantButtonTrigger:SetCustomColors(self.YL_NORMAL)
+        self.ArkasisAssistantButtonToggle:SetText(string.format("ARKASIS %d Sec", configuredSecs))
+        self.ArkasisAssistantButtonToggle:SetCustomColors(self.YL_NORMAL)
     end
 
     -- CALC DIMENSIONS
@@ -1539,14 +1571,41 @@ function Module:UpdateDimensions()
             self.SlayerAssistantButtonStatus:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
             innerY = innerY + Layout.elementHeight + Layout.elementSpacing
 
-            self.SlayerAssistantButtonTrigger:SetHidden(false)
-            self.SlayerAssistantButtonTrigger:SetDimensions(buttonFull, Layout.elementHeight)
-            self.SlayerAssistantButtonTrigger:SetAnchor(TOP, Content, TOP, 0, innerY)
+            local widthArrowSingle = Layout.elementHeight * 1.0
+            local widthArrowDouble = Layout.elementHeight * 1.0
+            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.elementSpacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
+
+            self.SlayerAssistantButtonMinus5:SetHidden(false)
+            self.SlayerAssistantButtonMinus1:SetHidden(false)
+            self.SlayerAssistantButtonToggle:SetHidden(false)
+            self.SlayerAssistantButtonPlus1:SetHidden(false)
+            self.SlayerAssistantButtonPlus5:SetHidden(false)
+
+            self.SlayerAssistantButtonMinus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.SlayerAssistantButtonMinus5:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+
+            self.SlayerAssistantButtonMinus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
+            self.SlayerAssistantButtonMinus1:SetAnchor(TOPLEFT, self.SlayerAssistantButtonMinus5, TOPRIGHT, Layout.elementSpacing, 0)
+
+            self.SlayerAssistantButtonToggle:SetDimensions(widthToggle, Layout.elementHeight)
+            self.SlayerAssistantButtonToggle:SetAnchor(TOPLEFT, self.SlayerAssistantButtonMinus1, TOPRIGHT, Layout.elementSpacing, 0)
+
+            self.SlayerAssistantButtonPlus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
+            self.SlayerAssistantButtonPlus1:SetAnchor(TOPLEFT, self.SlayerAssistantButtonToggle, TOPRIGHT, Layout.elementSpacing, 0)
+
+            self.SlayerAssistantButtonPlus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.SlayerAssistantButtonPlus5:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
+
             innerY = innerY + Layout.elementHeight + Layout.elementSpacing
         else
             self.SlayerAssistantButtonAssign:SetHidden(true)
             self.SlayerAssistantButtonStatus:SetHidden(true)
-            self.SlayerAssistantButtonTrigger:SetHidden(true)
+
+            self.SlayerAssistantButtonMinus5:SetHidden(true)
+            self.SlayerAssistantButtonMinus1:SetHidden(true)
+            self.SlayerAssistantButtonToggle:SetHidden(true)
+            self.SlayerAssistantButtonPlus1:SetHidden(true)
+            self.SlayerAssistantButtonPlus5:SetHidden(true)
         end
 
         for i = 1, self.activeSlayerSetUserLabels do
@@ -1586,14 +1645,41 @@ function Module:UpdateDimensions()
             self.ArkasisAssistantButtonStatus:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
             innerY = innerY + Layout.elementHeight + Layout.elementSpacing
 
-            self.ArkasisAssistantButtonTrigger:SetHidden(false)
-            self.ArkasisAssistantButtonTrigger:SetDimensions(buttonFull, Layout.elementHeight)
-            self.ArkasisAssistantButtonTrigger:SetAnchor(TOP, Content, TOP, 0, innerY)
+            local widthArrowSingle = Layout.elementHeight * 1.0
+            local widthArrowDouble = Layout.elementHeight * 1.0
+            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.elementSpacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
+
+            self.ArkasisAssistantButtonMinus5:SetHidden(false)
+            self.ArkasisAssistantButtonMinus1:SetHidden(false)
+            self.ArkasisAssistantButtonToggle:SetHidden(false)
+            self.ArkasisAssistantButtonPlus1:SetHidden(false)
+            self.ArkasisAssistantButtonPlus5:SetHidden(false)
+
+            self.ArkasisAssistantButtonMinus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.ArkasisAssistantButtonMinus5:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+
+            self.ArkasisAssistantButtonMinus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
+            self.ArkasisAssistantButtonMinus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus5, TOPRIGHT, Layout.elementSpacing, 0)
+
+            self.ArkasisAssistantButtonToggle:SetDimensions(widthToggle, Layout.elementHeight)
+            self.ArkasisAssistantButtonToggle:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus1, TOPRIGHT, Layout.elementSpacing, 0)
+
+            self.ArkasisAssistantButtonPlus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
+            self.ArkasisAssistantButtonPlus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonToggle, TOPRIGHT, Layout.elementSpacing, 0)
+
+            self.ArkasisAssistantButtonPlus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.ArkasisAssistantButtonPlus5:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
+
             innerY = innerY + Layout.elementHeight + Layout.elementSpacing
         else
             self.ArkasisAssistantButtonAssign:SetHidden(true)
             self.ArkasisAssistantButtonStatus:SetHidden(true)
-            self.ArkasisAssistantButtonTrigger:SetHidden(true)
+
+            self.ArkasisAssistantButtonMinus5:SetHidden(true)
+            self.ArkasisAssistantButtonMinus1:SetHidden(true)
+            self.ArkasisAssistantButtonToggle:SetHidden(true)
+            self.ArkasisAssistantButtonPlus1:SetHidden(true)
+            self.ArkasisAssistantButtonPlus5:SetHidden(true)
         end
 
         for i = 1, self.activeArkasisUserLabels do

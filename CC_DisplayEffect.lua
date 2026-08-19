@@ -216,7 +216,7 @@ function Module:Draw3DEffect(Config)
     -- REGISTER
     self.TrackedEffects[currentId] = Effect
 
-    if Effect.durationMs > 0 then
+    if Effect.durationMs > 0 and not Effect.isPermanent then
         zo_callLater(function()
             self:RemoveTrackedEffect(currentId)
         end, math.min(60000, Effect.durationMs))
