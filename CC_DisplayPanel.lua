@@ -37,13 +37,12 @@ local Module = {
     -- LAYOUT
     -------------------------------------------------------------------------------------------------
     Layout = {
-        margin           = 10,  -- DISTANCE TO EDGES AND BETWEEN CONTAINERS
+        margin           = 10,  -- DISTANCE TO EDGES AND FOOTER
+        spacing          = 5,   -- DISTANCE BETWEEN ELEMENTS / CONTAINERS
         padding          = 5,   -- DISTANCE INSIDE CONTAINER (L / R / BOT)
-        paddingTopButton = 5,   -- TOP DISTANCE IF FIRST ELMT IS BUTTON
-        paddingTopText   = 0,   -- TOP DISTANCE IF FIRST ELMT IS TEXT
-        headerHeight     = 24,  -- HEIGHT OF THE CONTAINR HEADER
-        elementHeight    = 24,  -- HEIGHT OF BUTTONS
-        elementSpacing   = 5,   -- DISTANCE BETWEEN ELMTS
+        paddingTop       = 0,   -- TOP DISTANCE FOR TEXT
+        heightHeader     = 24,  -- HEIGHT OF THE CONTAINR HEADER
+        heightElement    = 24,  -- HEIGHT OF BUTTONS AND TEXT
     },
 
     Font = {
@@ -66,8 +65,8 @@ local Module = {
 
         colorA = 0.75,
 
-        isVisible = true,
-        isMinimized = false,
+        isVisible              = true,
+        isMinimized            = false,
         isOpenAddonUsers       = false,
         isOpenSlayerAssistant  = false,
         isOpenArkasisAssistant = false,
@@ -218,7 +217,7 @@ function Module:CreatePanel()
     self.LabelAuthor:SetColor(unpack(self.ESO_MUTED))
     self.LabelAuthor:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
     self.LabelAuthor:SetVerticalAlignment(TEXT_ALIGN_CENTER)
-    self.LabelAuthor:SetText(string.format("CC %s-%04d - @Duesentrieb [PC/EU]", CC.VERSION, CC.ADDON))
+    self.LabelAuthor:SetText(string.format("CC %s-%04d - @Duesentrieb [PC/EU]", CC.VERSION, CC.ADDONVERSION))
 
     -- BUILD CONTS
     self:BuildAddonUsersContainer()
@@ -298,7 +297,7 @@ function Module:CreateContainer(name, SVKey)
     local Header = WINDOW_MANAGER:CreateControl(name .. "_Header", Container, CT_BUTTON)
     Header:SetAnchor(TOPLEFT, Container, TOPLEFT, 0, 0)
     Header:SetAnchor(TOPRIGHT, Container, TOPRIGHT, 0, 0)
-    Header:SetHeight(self.Layout.headerHeight)
+    Header:SetHeight(self.Layout.heightHeader)
     Header:SetMouseEnabled(true)
     Header:SetClickSound("Click")
 
@@ -419,7 +418,7 @@ function Module:BuildAddonUsersContainer()
     self.AddonUsersInfoLabel:SetText("Note: Assignments from others are only shown if they are in the same zone as you.")
 
     self.ButtonPingRequest = self:CreateButton("CC_DisplayPanel_ButtonPingRequest", self.ContainerAddonUsers.Content, "REFRESH PINGS", function()
-        CC.Broadcast:SendPingRequest(true)
+        CC.Broadcast:SendSyncRequest(true, true)
     end)
 end
 
@@ -740,7 +739,7 @@ function Module:BuildRaidleadToolsContainer()
     end)
 
     self.ButtonVoteStart = self:CreateButton("CC_DisplayPanel_ButtonVoteStart", Content, "START VOTE", function()
-        CC.RaidleadTools:StartVote()
+        CC.RaidleadTools:SendVoteRequest()
     end)
 
     -----------------------------------------------------
@@ -804,7 +803,7 @@ function Module:BuildSlayerAssistantContainer()
     end)
 
     self.SlayerAssistantButtonStatus = self:CreateButton("CC_DisplayPanel_SlayerAssistantButtonStatus", Content, "REQ STATUS", function()
-        CC.Broadcast:SendPingRequest(true)
+        CC.Broadcast:SendSyncRequest(true, true)
     end)
 
     self.SlayerAssistantButtonSetLeft = self:CreateButton("CC_DisplayPanel_SlayerAssistantButtonSetLeft", Content, "SET LEFT", function()
@@ -854,7 +853,7 @@ function Module:BuildArkasisAssistantContainer()
     end)
 
     self.ArkasisAssistantButtonStatus = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonStatus", Content, "REQ STATUS", function()
-        CC.Broadcast:SendPingRequest(true)
+        CC.Broadcast:SendSyncRequest(true, true)
     end)
 
     self.ArkasisAssistantButtonSet1 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonSet1", Content, "STACK 1", function()
@@ -1023,6 +1022,9 @@ function Module:UpdateData()
     local TriggerData = CC.LaunchPad.TriggerData[activeTrigger]
     local triggerName = TriggerData and TriggerData.name or "UNKNOWN"
 
+    local triggerColor = TriggerData and TriggerData.Color or self.ESO_NORMAL
+    local r, g, b = triggerColor[1], triggerColor[2], triggerColor[3]
+
     local currentCategory = CC.LaunchPad.menuSelectedCategory
     if not currentCategory or currentCategory == "" then
         currentCategory = TriggerData and TriggerData.category or "Other"
@@ -1030,7 +1032,10 @@ function Module:UpdateData()
     end
 
     self.LaunchPadCatLabelToggle:SetText(currentCategory)
+    self.LaunchPadCatLabelToggle:SetColor(r, g, b, 1)
+
     self.LaunchPadLabelToggle:SetText(triggerName)
+    self.LaunchPadLabelToggle:SetColor(r, g, b, 1)
 
     ----------------------------------------------------------------------------------------------------
     -- [P] POINTER
@@ -1263,44 +1268,44 @@ function Module:UpdateDimensions()
         if isOpen then
             Container.Content:SetHidden(false)
             local contentHeight = LayoutContentFunc(Container.Content, contentWidth)
-            local totalHeight = Layout.headerHeight + contentHeight + Layout.padding
+            local totalHeight = Layout.heightHeader + contentHeight + Layout.padding
 
             Container.Control:SetHeight(totalHeight)
-            currentY = currentY + totalHeight + Layout.margin
+            currentY = currentY + totalHeight + Layout.spacing
         else
             Container.Content:SetHidden(true)
-            Container.Control:SetHeight(Layout.headerHeight)
-            currentY = currentY + Layout.headerHeight + Layout.margin
+            Container.Control:SetHeight(Layout.heightHeader)
+            currentY = currentY + Layout.heightHeader + Layout.spacing
         end
     end
 
     -- [A] ADDON USERS
     ProcessContainer(self.ContainerAddonUsers, function(Content, width)
-        local innerY = Layout.paddingTopText -- TEXT
+        local innerY = Layout.paddingTop -- TEXT
 
         self.AddonUsersInfoLabel:SetDimensions(width - (2 * Layout.padding), 0)
         self.AddonUsersInfoLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        innerY = innerY + self.AddonUsersInfoLabel:GetTextHeight() + Layout.elementSpacing
+        innerY = innerY + self.AddonUsersInfoLabel:GetTextHeight() + Layout.spacing
 
         for i = 1, self.activeAddonUserLabels do
             local Label = self.AddonUserLabels[i]
             Label:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
             innerY = innerY + Label:GetTextHeight()
         end
-        innerY = innerY + Layout.elementSpacing
-        self.ButtonPingRequest:SetDimensions(width - (2 * Layout.padding), Layout.elementHeight)
+        innerY = innerY + Layout.spacing
+        self.ButtonPingRequest:SetDimensions(width - (2 * Layout.padding), Layout.heightElement)
         self.ButtonPingRequest:SetAnchor(TOP, Content, TOP, 0, innerY)
-        return innerY + Layout.elementHeight
+        return innerY + Layout.heightElement
     end)
 
     -- [D] DRAW SHAPE
     ProcessContainer(self.DrawShapeContainer, function(Content, width)
-        local innerY = Layout.paddingTopText
-        local buttonHalf = (width - (2 * Layout.padding) - Layout.elementSpacing) / 2
+        local innerY = Layout.paddingTop
+        local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
 
-        local widthArrowSingle = Layout.elementHeight * 1.0
-        local widthArrowDouble = Layout.elementHeight * 1.0
-        local widthCenterLabel = width - (2 * Layout.padding) - (4 * Layout.elementSpacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
+        local widthArrowSingle = Layout.heightElement * 1.0
+        local widthArrowDouble = Layout.heightElement * 1.0
+        local widthCenterLabel = width - (2 * Layout.padding) - (4 * Layout.spacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
         local widthToggle = widthCenterLabel
 
         local isRectangle = (CC.DrawShape.SV.shapeType == LUT.DRAW_SHAPE.RECTANGLE)
@@ -1308,43 +1313,43 @@ function Module:UpdateDimensions()
         -- INFO
         self.DrawShapeInfoLabel:SetDimensions(width - (2 * Layout.padding), 0)
         self.DrawShapeInfoLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        innerY = innerY + self.DrawShapeInfoLabel:GetTextHeight() + Layout.elementSpacing
+        innerY = innerY + self.DrawShapeInfoLabel:GetTextHeight() + Layout.spacing
 
         -- SHAPE TOGGLE
-        self.DrawShapeButtonFirst:SetDimensions(widthArrowDouble, Layout.elementHeight)
+        self.DrawShapeButtonFirst:SetDimensions(widthArrowDouble, Layout.heightElement)
         self.DrawShapeButtonFirst:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-        self.DrawShapeButtonPrev:SetDimensions(widthArrowSingle, Layout.elementHeight)
-        self.DrawShapeButtonPrev:SetAnchor(TOPLEFT, self.DrawShapeButtonFirst, TOPRIGHT, Layout.elementSpacing, 0)
+        self.DrawShapeButtonPrev:SetDimensions(widthArrowSingle, Layout.heightElement)
+        self.DrawShapeButtonPrev:SetAnchor(TOPLEFT, self.DrawShapeButtonFirst, TOPRIGHT, Layout.spacing, 0)
 
-        self.DrawShapeLabelToggle:SetDimensions(widthToggle, Layout.elementHeight)
-        self.DrawShapeLabelToggle:SetAnchor(TOPLEFT, self.DrawShapeButtonPrev, TOPRIGHT, Layout.elementSpacing, 0)
+        self.DrawShapeLabelToggle:SetDimensions(widthToggle, Layout.heightElement)
+        self.DrawShapeLabelToggle:SetAnchor(TOPLEFT, self.DrawShapeButtonPrev, TOPRIGHT, Layout.spacing, 0)
 
-        self.DrawShapeButtonNext:SetDimensions(widthArrowSingle, Layout.elementHeight)
-        self.DrawShapeButtonNext:SetAnchor(TOPLEFT, self.DrawShapeLabelToggle, TOPRIGHT, Layout.elementSpacing, 0)
+        self.DrawShapeButtonNext:SetDimensions(widthArrowSingle, Layout.heightElement)
+        self.DrawShapeButtonNext:SetAnchor(TOPLEFT, self.DrawShapeLabelToggle, TOPRIGHT, Layout.spacing, 0)
 
-        self.DrawShapeButtonLast:SetDimensions(widthArrowDouble, Layout.elementHeight)
+        self.DrawShapeButtonLast:SetDimensions(widthArrowDouble, Layout.heightElement)
         self.DrawShapeButtonLast:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
-        innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+        innerY = innerY + Layout.heightElement + Layout.spacing
 
         -- ROW X (WIDTH / DIAMETER)
-        self.DrawShapeButtonMinus10X:SetDimensions(widthArrowDouble, Layout.elementHeight)
+        self.DrawShapeButtonMinus10X:SetDimensions(widthArrowDouble, Layout.heightElement)
         self.DrawShapeButtonMinus10X:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-        self.DrawShapeButtonMinus1X:SetDimensions(widthArrowSingle, Layout.elementHeight)
-        self.DrawShapeButtonMinus1X:SetAnchor(TOPLEFT, self.DrawShapeButtonMinus10X, TOPRIGHT, Layout.elementSpacing, 0)
+        self.DrawShapeButtonMinus1X:SetDimensions(widthArrowSingle, Layout.heightElement)
+        self.DrawShapeButtonMinus1X:SetAnchor(TOPLEFT, self.DrawShapeButtonMinus10X, TOPRIGHT, Layout.spacing, 0)
 
-        self.DrawShapeLabelValueX:SetDimensions(widthCenterLabel, Layout.elementHeight)
-        self.DrawShapeLabelValueX:SetAnchor(TOPLEFT, self.DrawShapeButtonMinus1X, TOPRIGHT, Layout.elementSpacing, 0)
+        self.DrawShapeLabelValueX:SetDimensions(widthCenterLabel, Layout.heightElement)
+        self.DrawShapeLabelValueX:SetAnchor(TOPLEFT, self.DrawShapeButtonMinus1X, TOPRIGHT, Layout.spacing, 0)
 
-        self.DrawShapeButtonPlus1X:SetDimensions(widthArrowSingle, Layout.elementHeight)
-        self.DrawShapeButtonPlus1X:SetAnchor(TOPLEFT, self.DrawShapeLabelValueX, TOPRIGHT, Layout.elementSpacing, 0)
+        self.DrawShapeButtonPlus1X:SetDimensions(widthArrowSingle, Layout.heightElement)
+        self.DrawShapeButtonPlus1X:SetAnchor(TOPLEFT, self.DrawShapeLabelValueX, TOPRIGHT, Layout.spacing, 0)
 
-        self.DrawShapeButtonPlus10X:SetDimensions(widthArrowDouble, Layout.elementHeight)
+        self.DrawShapeButtonPlus10X:SetDimensions(widthArrowDouble, Layout.heightElement)
         self.DrawShapeButtonPlus10X:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
-        innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+        innerY = innerY + Layout.heightElement + Layout.spacing
 
         -- ROW Z (LENGTH) - RECTANGLE
         if isRectangle then
@@ -1354,22 +1359,22 @@ function Module:UpdateDimensions()
             self.DrawShapeButtonPlus1Z:SetHidden(false)
             self.DrawShapeButtonPlus10Z:SetHidden(false)
 
-            self.DrawShapeButtonMinus10Z:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.DrawShapeButtonMinus10Z:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.DrawShapeButtonMinus10Z:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-            self.DrawShapeButtonMinus1Z:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.DrawShapeButtonMinus1Z:SetAnchor(TOPLEFT, self.DrawShapeButtonMinus10Z, TOPRIGHT, Layout.elementSpacing, 0)
+            self.DrawShapeButtonMinus1Z:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.DrawShapeButtonMinus1Z:SetAnchor(TOPLEFT, self.DrawShapeButtonMinus10Z, TOPRIGHT, Layout.spacing, 0)
 
-            self.DrawShapeLabelValueZ:SetDimensions(widthCenterLabel, Layout.elementHeight)
-            self.DrawShapeLabelValueZ:SetAnchor(TOPLEFT, self.DrawShapeButtonMinus1Z, TOPRIGHT, Layout.elementSpacing, 0)
+            self.DrawShapeLabelValueZ:SetDimensions(widthCenterLabel, Layout.heightElement)
+            self.DrawShapeLabelValueZ:SetAnchor(TOPLEFT, self.DrawShapeButtonMinus1Z, TOPRIGHT, Layout.spacing, 0)
 
-            self.DrawShapeButtonPlus1Z:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.DrawShapeButtonPlus1Z:SetAnchor(TOPLEFT, self.DrawShapeLabelValueZ, TOPRIGHT, Layout.elementSpacing, 0)
+            self.DrawShapeButtonPlus1Z:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.DrawShapeButtonPlus1Z:SetAnchor(TOPLEFT, self.DrawShapeLabelValueZ, TOPRIGHT, Layout.spacing, 0)
 
-            self.DrawShapeButtonPlus10Z:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.DrawShapeButtonPlus10Z:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.DrawShapeButtonPlus10Z:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
-            innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+            innerY = innerY + Layout.heightElement + Layout.spacing
         else
             self.DrawShapeButtonMinus10Z:SetHidden(true)
             self.DrawShapeButtonMinus1Z:SetHidden(true)
@@ -1379,163 +1384,163 @@ function Module:UpdateDimensions()
         end
 
         -- PLACE BUTTONS
-        self.DrawShapeButtonCursor:SetDimensions(buttonHalf, Layout.elementHeight)
+        self.DrawShapeButtonCursor:SetDimensions(buttonHalf, Layout.heightElement)
         self.DrawShapeButtonCursor:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-        self.DrawShapeButtonSelf:SetDimensions(buttonHalf, Layout.elementHeight)
+        self.DrawShapeButtonSelf:SetDimensions(buttonHalf, Layout.heightElement)
         self.DrawShapeButtonSelf:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
-        return innerY + Layout.elementHeight
+        return innerY + Layout.heightElement
     end)
 
     -- [L] LAUNCH PAD
     ProcessContainer(self.ContainerLaunchPad, function(Content, width)
-        local innerY = Layout.paddingTopText
-        local buttonHalf = (width - (2 * Layout.padding) - Layout.elementSpacing) / 2
+        local innerY = Layout.paddingTop
+        local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
         local buttonFull = width - (2 * Layout.padding)
 
-        local widthArrowSingle = Layout.elementHeight * 1.0
-        local widthArrowDouble = Layout.elementHeight * 1.0
-        local widthToggle = width - (2 * Layout.padding) - (4 * Layout.elementSpacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
+        local widthArrowSingle = Layout.heightElement * 1.0
+        local widthArrowDouble = Layout.heightElement * 1.0
+        local widthToggle = width - (2 * Layout.padding) - (4 * Layout.spacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
 
         -- INFO
         self.LaunchPadInfoLabel:SetDimensions(width - (2 * Layout.padding), 0)
         self.LaunchPadInfoLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        innerY = innerY + self.LaunchPadInfoLabel:GetTextHeight() + Layout.elementSpacing
+        innerY = innerY + self.LaunchPadInfoLabel:GetTextHeight() + Layout.spacing
 
         -- CATEGORY TOGGLE
-        self.LaunchPadCatButtonFirst:SetDimensions(widthArrowDouble, Layout.elementHeight)
+        self.LaunchPadCatButtonFirst:SetDimensions(widthArrowDouble, Layout.heightElement)
         self.LaunchPadCatButtonFirst:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-        self.LaunchPadCatButtonPrev:SetDimensions(widthArrowSingle, Layout.elementHeight)
-        self.LaunchPadCatButtonPrev:SetAnchor(TOPLEFT, self.LaunchPadCatButtonFirst, TOPRIGHT, Layout.elementSpacing, 0)
+        self.LaunchPadCatButtonPrev:SetDimensions(widthArrowSingle, Layout.heightElement)
+        self.LaunchPadCatButtonPrev:SetAnchor(TOPLEFT, self.LaunchPadCatButtonFirst, TOPRIGHT, Layout.spacing, 0)
 
-        self.LaunchPadCatLabelToggle:SetDimensions(widthToggle, Layout.elementHeight)
-        self.LaunchPadCatLabelToggle:SetAnchor(TOPLEFT, self.LaunchPadCatButtonPrev, TOPRIGHT, Layout.elementSpacing, 0)
+        self.LaunchPadCatLabelToggle:SetDimensions(widthToggle, Layout.heightElement)
+        self.LaunchPadCatLabelToggle:SetAnchor(TOPLEFT, self.LaunchPadCatButtonPrev, TOPRIGHT, Layout.spacing, 0)
 
-        self.LaunchPadCatButtonNext:SetDimensions(widthArrowSingle, Layout.elementHeight)
-        self.LaunchPadCatButtonNext:SetAnchor(TOPLEFT, self.LaunchPadCatLabelToggle, TOPRIGHT, Layout.elementSpacing, 0)
+        self.LaunchPadCatButtonNext:SetDimensions(widthArrowSingle, Layout.heightElement)
+        self.LaunchPadCatButtonNext:SetAnchor(TOPLEFT, self.LaunchPadCatLabelToggle, TOPRIGHT, Layout.spacing, 0)
 
-        self.LaunchPadCatButtonLast:SetDimensions(widthArrowDouble, Layout.elementHeight)
+        self.LaunchPadCatButtonLast:SetDimensions(widthArrowDouble, Layout.heightElement)
         self.LaunchPadCatButtonLast:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
-        innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+        innerY = innerY + Layout.heightElement + Layout.spacing
 
         -- TRIGGER TOGGLE
-        self.LaunchPadButtonFirst:SetDimensions(widthArrowDouble, Layout.elementHeight)
+        self.LaunchPadButtonFirst:SetDimensions(widthArrowDouble, Layout.heightElement)
         self.LaunchPadButtonFirst:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-        self.LaunchPadButtonPrev:SetDimensions(widthArrowSingle, Layout.elementHeight)
-        self.LaunchPadButtonPrev:SetAnchor(TOPLEFT, self.LaunchPadButtonFirst, TOPRIGHT, Layout.elementSpacing, 0)
+        self.LaunchPadButtonPrev:SetDimensions(widthArrowSingle, Layout.heightElement)
+        self.LaunchPadButtonPrev:SetAnchor(TOPLEFT, self.LaunchPadButtonFirst, TOPRIGHT, Layout.spacing, 0)
 
-        self.LaunchPadLabelToggle:SetDimensions(widthToggle, Layout.elementHeight)
-        self.LaunchPadLabelToggle:SetAnchor(TOPLEFT, self.LaunchPadButtonPrev, TOPRIGHT, Layout.elementSpacing, 0)
+        self.LaunchPadLabelToggle:SetDimensions(widthToggle, Layout.heightElement)
+        self.LaunchPadLabelToggle:SetAnchor(TOPLEFT, self.LaunchPadButtonPrev, TOPRIGHT, Layout.spacing, 0)
 
-        self.LaunchPadButtonNext:SetDimensions(widthArrowSingle, Layout.elementHeight)
-        self.LaunchPadButtonNext:SetAnchor(TOPLEFT, self.LaunchPadLabelToggle, TOPRIGHT, Layout.elementSpacing, 0)
+        self.LaunchPadButtonNext:SetDimensions(widthArrowSingle, Layout.heightElement)
+        self.LaunchPadButtonNext:SetAnchor(TOPLEFT, self.LaunchPadLabelToggle, TOPRIGHT, Layout.spacing, 0)
 
-        self.LaunchPadButtonLast:SetDimensions(widthArrowDouble, Layout.elementHeight)
+        self.LaunchPadButtonLast:SetDimensions(widthArrowDouble, Layout.heightElement)
         self.LaunchPadButtonLast:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
-        innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+        innerY = innerY + Layout.heightElement + Layout.spacing
 
         -- AT CURSOR / ON SELF
-        self.LaunchPadButtonCursor:SetDimensions(buttonHalf, Layout.elementHeight)
+        self.LaunchPadButtonCursor:SetDimensions(buttonHalf, Layout.heightElement)
         self.LaunchPadButtonCursor:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-        self.LaunchPadButtonSelf:SetDimensions(buttonHalf, Layout.elementHeight)
+        self.LaunchPadButtonSelf:SetDimensions(buttonHalf, Layout.heightElement)
         self.LaunchPadButtonSelf:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-        innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+        innerY = innerY + Layout.heightElement + Layout.spacing
 
         -- DELETE CLOSEST
-        self.LaunchPadButtonDeleteClosest:SetDimensions(buttonFull, Layout.elementHeight)
+        self.LaunchPadButtonDeleteClosest:SetDimensions(buttonFull, Layout.heightElement)
         self.LaunchPadButtonDeleteClosest:SetAnchor(TOP, Content, TOP, 0, innerY)
 
-        return innerY + Layout.elementHeight
+        return innerY + Layout.heightElement
     end)
 
     -- [P] POINTER
     ProcessContainer(self.PointerContainer, function(Content, width)
-        local innerY = Layout.paddingTopText -- TEXT
+        local innerY = Layout.paddingTop -- TEXT
 
         -- INFO
         self.PointerInfoLabel:SetDimensions(width - (2 * Layout.padding), 0)
         self.PointerInfoLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        innerY = innerY + self.PointerInfoLabel:GetTextHeight() + Layout.elementSpacing
+        innerY = innerY + self.PointerInfoLabel:GetTextHeight() + Layout.spacing
 
         -- BUTTONS
-        local buttonHalf = (width - (2 * Layout.padding) - Layout.elementSpacing) / 2
+        local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
 
-        self.PointerButtonCursor:SetDimensions(buttonHalf, Layout.elementHeight)
+        self.PointerButtonCursor:SetDimensions(buttonHalf, Layout.heightElement)
         self.PointerButtonCursor:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-        self.PointerButtonSelf:SetDimensions(buttonHalf, Layout.elementHeight)
+        self.PointerButtonSelf:SetDimensions(buttonHalf, Layout.heightElement)
         self.PointerButtonSelf:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
-        return innerY + Layout.elementHeight
+        return innerY + Layout.heightElement
     end)
 
     -- [R] RAIDLEAD TOOLS
     if isRaidlead then
         self.ContainerRaidleadTools.Control:SetHidden(false)
         ProcessContainer(self.ContainerRaidleadTools, function(Content, width)
-            local innerY = Layout.paddingTopText
-            local buttonHalf = (width - (2 * Layout.padding) - Layout.elementSpacing) / 2
-            local widthArrowSingle = Layout.elementHeight * 1.0
-            local widthArrowDouble = Layout.elementHeight * 1.0
-            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.elementSpacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
+            local innerY = Layout.paddingTop
+            local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
+            local widthArrowSingle = Layout.heightElement * 1.0
+            local widthArrowDouble = Layout.heightElement * 1.0
+            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.spacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
 
             -- INFO
             self.RaidleadToolsInfoLabel:SetDimensions(width - (2 * Layout.padding), 0)
             self.RaidleadToolsInfoLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-            innerY = innerY + self.RaidleadToolsInfoLabel:GetTextHeight() + Layout.elementSpacing
+            innerY = innerY + self.RaidleadToolsInfoLabel:GetTextHeight() + Layout.spacing
 
             -- WIPE AND PTE
-            self.ButtonWipePlease:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.ButtonWipePlease:SetDimensions(buttonHalf, Layout.heightElement)
             self.ButtonWipePlease:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-            self.ButtonExitInstance:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.ButtonExitInstance:SetDimensions(buttonHalf, Layout.heightElement)
             self.ButtonExitInstance:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-            innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+            innerY = innerY + Layout.heightElement + Layout.spacing
 
             -- PORT IN AND PORT LEAD
-            self.ButtonPortInPlease:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.ButtonPortInPlease:SetDimensions(buttonHalf, Layout.heightElement)
             self.ButtonPortInPlease:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-            self.ButtonPortToLeader:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.ButtonPortToLeader:SetDimensions(buttonHalf, Layout.heightElement)
             self.ButtonPortToLeader:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-            innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+            innerY = innerY + Layout.heightElement + Layout.spacing
 
             -- READYCHECK AND VOTE
-            self.ButtonReadyCheck:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.ButtonReadyCheck:SetDimensions(buttonHalf, Layout.heightElement)
             self.ButtonReadyCheck:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-            self.ButtonVoteStart:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.ButtonVoteStart:SetDimensions(buttonHalf, Layout.heightElement)
             self.ButtonVoteStart:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-            innerY = innerY + Layout.elementHeight + (Layout.elementSpacing * 2)
+            innerY = innerY + Layout.heightElement + (Layout.spacing * 2)
 
             -- BREAK
-            self.BreakTimerButtonMinus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.BreakTimerButtonMinus5:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.BreakTimerButtonMinus5:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-            self.BreakTimerButtonMinus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.BreakTimerButtonMinus1:SetAnchor(TOPLEFT, self.BreakTimerButtonMinus5, TOPRIGHT, Layout.elementSpacing, 0)
-            self.BreakTimerButtonToggle:SetDimensions(widthToggle, Layout.elementHeight)
-            self.BreakTimerButtonToggle:SetAnchor(TOPLEFT, self.BreakTimerButtonMinus1, TOPRIGHT, Layout.elementSpacing, 0)
-            self.BreakTimerButtonPlus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.BreakTimerButtonPlus1:SetAnchor(TOPLEFT, self.BreakTimerButtonToggle, TOPRIGHT, Layout.elementSpacing, 0)
-            self.BreakTimerButtonPlus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.BreakTimerButtonMinus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.BreakTimerButtonMinus1:SetAnchor(TOPLEFT, self.BreakTimerButtonMinus5, TOPRIGHT, Layout.spacing, 0)
+            self.BreakTimerButtonToggle:SetDimensions(widthToggle, Layout.heightElement)
+            self.BreakTimerButtonToggle:SetAnchor(TOPLEFT, self.BreakTimerButtonMinus1, TOPRIGHT, Layout.spacing, 0)
+            self.BreakTimerButtonPlus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.BreakTimerButtonPlus1:SetAnchor(TOPLEFT, self.BreakTimerButtonToggle, TOPRIGHT, Layout.spacing, 0)
+            self.BreakTimerButtonPlus5:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.BreakTimerButtonPlus5:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-            innerY = innerY + Layout.elementHeight + (Layout.elementSpacing * 2)
+            innerY = innerY + Layout.heightElement + (Layout.spacing * 2)
 
             -- PULL TOGGLE
-            self.PullTimerButtonMinus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.PullTimerButtonMinus5:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.PullTimerButtonMinus5:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-            self.PullTimerButtonMinus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.PullTimerButtonMinus1:SetAnchor(TOPLEFT, self.PullTimerButtonMinus5, TOPRIGHT, Layout.elementSpacing, 0)
-            self.PullTimerButtonToggle:SetDimensions(widthToggle, Layout.elementHeight)
-            self.PullTimerButtonToggle:SetAnchor(TOPLEFT, self.PullTimerButtonMinus1, TOPRIGHT, Layout.elementSpacing, 0)
-            self.PullTimerButtonPlus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.PullTimerButtonPlus1:SetAnchor(TOPLEFT, self.PullTimerButtonToggle, TOPRIGHT, Layout.elementSpacing, 0)
-            self.PullTimerButtonPlus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.PullTimerButtonMinus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.PullTimerButtonMinus1:SetAnchor(TOPLEFT, self.PullTimerButtonMinus5, TOPRIGHT, Layout.spacing, 0)
+            self.PullTimerButtonToggle:SetDimensions(widthToggle, Layout.heightElement)
+            self.PullTimerButtonToggle:SetAnchor(TOPLEFT, self.PullTimerButtonMinus1, TOPRIGHT, Layout.spacing, 0)
+            self.PullTimerButtonPlus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.PullTimerButtonPlus1:SetAnchor(TOPLEFT, self.PullTimerButtonToggle, TOPRIGHT, Layout.spacing, 0)
+            self.PullTimerButtonPlus5:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.PullTimerButtonPlus5:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-            innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+            innerY = innerY + Layout.heightElement + Layout.spacing
 
             return innerY
         end)
@@ -1548,32 +1553,32 @@ function Module:UpdateDimensions()
 
     -- [S] SLAYER ASSSISTANT
     ProcessContainer(self.ContainerSlayerAssistant, function(Content, width)
-        local innerY = Layout.paddingTopText
-        local buttonHalf = (width - (2 * Layout.padding) - Layout.elementSpacing) / 2
+        local innerY = Layout.paddingTop
+        local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
         local buttonFull = width - (2 * Layout.padding)
 
         self.SlayerAssistantPositionLabel:SetDimensions(width - (2 * Layout.padding), 0)
         self.SlayerAssistantPositionLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        innerY = innerY + self.SlayerAssistantPositionLabel:GetTextHeight() + Layout.elementSpacing
+        innerY = innerY + self.SlayerAssistantPositionLabel:GetTextHeight() + Layout.spacing
 
-        self.SlayerAssistantButtonSetLeft:SetDimensions(buttonHalf, Layout.elementHeight)
+        self.SlayerAssistantButtonSetLeft:SetDimensions(buttonHalf, Layout.heightElement)
         self.SlayerAssistantButtonSetLeft:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        self.SlayerAssistantButtonSetRight:SetDimensions(buttonHalf, Layout.elementHeight)
+        self.SlayerAssistantButtonSetRight:SetDimensions(buttonHalf, Layout.heightElement)
         self.SlayerAssistantButtonSetRight:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-        innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+        innerY = innerY + Layout.heightElement + Layout.spacing
 
         if isRaidlead then
             self.SlayerAssistantButtonAssign:SetHidden(false)
             self.SlayerAssistantButtonStatus:SetHidden(false)
-            self.SlayerAssistantButtonAssign:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.SlayerAssistantButtonAssign:SetDimensions(buttonHalf, Layout.heightElement)
             self.SlayerAssistantButtonAssign:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-            self.SlayerAssistantButtonStatus:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.SlayerAssistantButtonStatus:SetDimensions(buttonHalf, Layout.heightElement)
             self.SlayerAssistantButtonStatus:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-            innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+            innerY = innerY + Layout.heightElement + Layout.spacing
 
-            local widthArrowSingle = Layout.elementHeight * 1.0
-            local widthArrowDouble = Layout.elementHeight * 1.0
-            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.elementSpacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
+            local widthArrowSingle = Layout.heightElement * 1.0
+            local widthArrowDouble = Layout.heightElement * 1.0
+            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.spacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
 
             self.SlayerAssistantButtonMinus5:SetHidden(false)
             self.SlayerAssistantButtonMinus1:SetHidden(false)
@@ -1581,22 +1586,22 @@ function Module:UpdateDimensions()
             self.SlayerAssistantButtonPlus1:SetHidden(false)
             self.SlayerAssistantButtonPlus5:SetHidden(false)
 
-            self.SlayerAssistantButtonMinus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.SlayerAssistantButtonMinus5:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.SlayerAssistantButtonMinus5:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-            self.SlayerAssistantButtonMinus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.SlayerAssistantButtonMinus1:SetAnchor(TOPLEFT, self.SlayerAssistantButtonMinus5, TOPRIGHT, Layout.elementSpacing, 0)
+            self.SlayerAssistantButtonMinus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.SlayerAssistantButtonMinus1:SetAnchor(TOPLEFT, self.SlayerAssistantButtonMinus5, TOPRIGHT, Layout.spacing, 0)
 
-            self.SlayerAssistantButtonToggle:SetDimensions(widthToggle, Layout.elementHeight)
-            self.SlayerAssistantButtonToggle:SetAnchor(TOPLEFT, self.SlayerAssistantButtonMinus1, TOPRIGHT, Layout.elementSpacing, 0)
+            self.SlayerAssistantButtonToggle:SetDimensions(widthToggle, Layout.heightElement)
+            self.SlayerAssistantButtonToggle:SetAnchor(TOPLEFT, self.SlayerAssistantButtonMinus1, TOPRIGHT, Layout.spacing, 0)
 
-            self.SlayerAssistantButtonPlus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.SlayerAssistantButtonPlus1:SetAnchor(TOPLEFT, self.SlayerAssistantButtonToggle, TOPRIGHT, Layout.elementSpacing, 0)
+            self.SlayerAssistantButtonPlus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.SlayerAssistantButtonPlus1:SetAnchor(TOPLEFT, self.SlayerAssistantButtonToggle, TOPRIGHT, Layout.spacing, 0)
 
-            self.SlayerAssistantButtonPlus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.SlayerAssistantButtonPlus5:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.SlayerAssistantButtonPlus5:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
-            innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+            innerY = innerY + Layout.heightElement + Layout.spacing
         else
             self.SlayerAssistantButtonAssign:SetHidden(true)
             self.SlayerAssistantButtonStatus:SetHidden(true)
@@ -1619,35 +1624,35 @@ function Module:UpdateDimensions()
 
     -- [K] ARKASIS ASSISTANT
     ProcessContainer(self.ContainerArkasisAssistant, function(Content, width)
-        local innerY = Layout.paddingTopText
-        local buttonHalf = (width - (2 * Layout.padding) - Layout.elementSpacing) / 2
-        local buttonThird = (width - (2 * Layout.padding) - (2 * Layout.elementSpacing)) / 3
+        local innerY = Layout.paddingTop
+        local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
+        local buttonThird = (width - (2 * Layout.padding) - (2 * Layout.spacing)) / 3
         local buttonFull = width - (2 * Layout.padding)
 
         self.ArkasisAssistantPositionLabel:SetDimensions(width - (2 * Layout.padding), 0)
         self.ArkasisAssistantPositionLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        innerY = innerY + self.ArkasisAssistantPositionLabel:GetTextHeight() + Layout.elementSpacing
+        innerY = innerY + self.ArkasisAssistantPositionLabel:GetTextHeight() + Layout.spacing
 
-        self.ArkasisAssistantButtonSet1:SetDimensions(buttonThird, Layout.elementHeight)
+        self.ArkasisAssistantButtonSet1:SetDimensions(buttonThird, Layout.heightElement)
         self.ArkasisAssistantButtonSet1:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        self.ArkasisAssistantButtonSet2:SetDimensions(buttonThird, Layout.elementHeight)
-        self.ArkasisAssistantButtonSet2:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonSet1, TOPRIGHT, Layout.elementSpacing, 0)
-        self.ArkasisAssistantButtonSet3:SetDimensions(buttonThird, Layout.elementHeight)
+        self.ArkasisAssistantButtonSet2:SetDimensions(buttonThird, Layout.heightElement)
+        self.ArkasisAssistantButtonSet2:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonSet1, TOPRIGHT, Layout.spacing, 0)
+        self.ArkasisAssistantButtonSet3:SetDimensions(buttonThird, Layout.heightElement)
         self.ArkasisAssistantButtonSet3:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-        innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+        innerY = innerY + Layout.heightElement + Layout.spacing
 
         if isRaidlead then
             self.ArkasisAssistantButtonAssign:SetHidden(false)
             self.ArkasisAssistantButtonStatus:SetHidden(false)
-            self.ArkasisAssistantButtonAssign:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.ArkasisAssistantButtonAssign:SetDimensions(buttonHalf, Layout.heightElement)
             self.ArkasisAssistantButtonAssign:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-            self.ArkasisAssistantButtonStatus:SetDimensions(buttonHalf, Layout.elementHeight)
+            self.ArkasisAssistantButtonStatus:SetDimensions(buttonHalf, Layout.heightElement)
             self.ArkasisAssistantButtonStatus:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-            innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+            innerY = innerY + Layout.heightElement + Layout.spacing
 
-            local widthArrowSingle = Layout.elementHeight * 1.0
-            local widthArrowDouble = Layout.elementHeight * 1.0
-            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.elementSpacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
+            local widthArrowSingle = Layout.heightElement * 1.0
+            local widthArrowDouble = Layout.heightElement * 1.0
+            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.spacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
 
             self.ArkasisAssistantButtonMinus5:SetHidden(false)
             self.ArkasisAssistantButtonMinus1:SetHidden(false)
@@ -1655,22 +1660,22 @@ function Module:UpdateDimensions()
             self.ArkasisAssistantButtonPlus1:SetHidden(false)
             self.ArkasisAssistantButtonPlus5:SetHidden(false)
 
-            self.ArkasisAssistantButtonMinus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.ArkasisAssistantButtonMinus5:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.ArkasisAssistantButtonMinus5:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
 
-            self.ArkasisAssistantButtonMinus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.ArkasisAssistantButtonMinus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus5, TOPRIGHT, Layout.elementSpacing, 0)
+            self.ArkasisAssistantButtonMinus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.ArkasisAssistantButtonMinus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus5, TOPRIGHT, Layout.spacing, 0)
 
-            self.ArkasisAssistantButtonToggle:SetDimensions(widthToggle, Layout.elementHeight)
-            self.ArkasisAssistantButtonToggle:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus1, TOPRIGHT, Layout.elementSpacing, 0)
+            self.ArkasisAssistantButtonToggle:SetDimensions(widthToggle, Layout.heightElement)
+            self.ArkasisAssistantButtonToggle:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus1, TOPRIGHT, Layout.spacing, 0)
 
-            self.ArkasisAssistantButtonPlus1:SetDimensions(widthArrowSingle, Layout.elementHeight)
-            self.ArkasisAssistantButtonPlus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonToggle, TOPRIGHT, Layout.elementSpacing, 0)
+            self.ArkasisAssistantButtonPlus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.ArkasisAssistantButtonPlus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonToggle, TOPRIGHT, Layout.spacing, 0)
 
-            self.ArkasisAssistantButtonPlus5:SetDimensions(widthArrowDouble, Layout.elementHeight)
+            self.ArkasisAssistantButtonPlus5:SetDimensions(widthArrowDouble, Layout.heightElement)
             self.ArkasisAssistantButtonPlus5:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
 
-            innerY = innerY + Layout.elementHeight + Layout.elementSpacing
+            innerY = innerY + Layout.heightElement + Layout.spacing
         else
             self.ArkasisAssistantButtonAssign:SetHidden(true)
             self.ArkasisAssistantButtonStatus:SetHidden(true)
@@ -1691,7 +1696,9 @@ function Module:UpdateDimensions()
         return innerY
     end)
 
+
     -- AUTHOR
+    currentY = currentY - Layout.spacing + Layout.margin
     self.LabelAuthor:SetAnchor(TOP, self.Parent, TOP, 0, currentY - Layout.padding)
     currentY = currentY + self.LabelAuthor:GetTextHeight()
 
@@ -1809,12 +1816,12 @@ function Module:CustomEnable()
         self:Hide()
     end
 
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "CC_DisplayPanel_UpdateData", 1000, function() self:UpdateData() end)
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayPanel_UpdateData", 1000, function() self:UpdateData() end)
 end
 
 function Module:CustomDisable()
     self:Hide()
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "CC_DisplayPanel_UpdateData")
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayPanel_UpdateData")
 end
 
 ----------------------------------------------------------------------------------------------------

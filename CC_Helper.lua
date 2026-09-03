@@ -33,7 +33,7 @@ end
 
 SLASH_COMMANDS["/cc_debug"] = function()
     CC.SV.enableDebug = not CC.SV.enableDebug
-    d(CC.CHAT .. (CC.SV.enableDebug and " |c00FF00Debug enabled.|r" or " |cFF0000Debug disabled.|r"))
+    d(CC.CHAT .. (CC.SV.enableDebug and " |c00FF00Debug [Miscellaneous] enabled.|r" or " |cFF0000Debug [Miscellaneous] disabled.|r"))
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ function CC.GetPlayerSetStatus(setType)
             ItemCounts[setId] = (ItemCounts[setId] or 0)
             local weaponType = GetItemWeaponType(BAG_WORN, itemSlot) or 0
 
-            -- IF TWO HANDED -> ItemCounts AS 2
+            -- IF TWO HANDED -> ITEM COUNTS AS TWO
             if CC.WEAPONTYPE_TWO_HANDED[weaponType] then
                 ItemCounts[setId] = ItemCounts[setId] + 2
             else

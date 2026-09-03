@@ -20,8 +20,8 @@ local Module = {
         LUT.EXIT_INSTANCE,
         LUT.PORT_IN_PLEASE,
         LUT.PORT_TO_LEADER,
-        LUT.VOTE_START,
         LUT.VOTE_REPLY,
+        LUT.VOTE_REQUEST,
     },
 
     VoteData = {
@@ -90,7 +90,7 @@ function Module:RequestPull(pullSeconds)
     end
 
     -- CLEAR HODOR REFLEXES DELAY
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "HODORREFLEXES_PULLTIMER_DELAY")
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "RaidleadTools_HodorReflexesPulltimer_Delay")
 
     local Data = { ID = LUT.PULL_TIMER, TX = 0, TY = 0, TZ = 0, RX = 0, RY = 0, RZ = cleanSeconds }
 
@@ -106,8 +106,8 @@ function Module:RequestPull(pullSeconds)
                 elseif cleanSeconds > 10 then
                     -- DELAY AND SEND 10s TIMER
                     local delayMs = (cleanSeconds - 10) * 1000
-                    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "HODORREFLEXES_PULLTIMER_DELAY", delayMs, function()
-                        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "HODORREFLEXES_PULLTIMER_DELAY")
+                    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "RaidleadTools_HodorReflexesPulltimer_Delay", delayMs, function()
+                        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "RaidleadTools_HodorReflexesPulltimer_Delay")
                         if HodorReflexes and HodorReflexes.modules and HodorReflexes.modules.pull then
                             HodorReflexes.modules.pull:SendPullCountdown(10)
                         end
@@ -118,6 +118,26 @@ function Module:RequestPull(pullSeconds)
     else
         self:HandleBroadcast("player", Data)
     end
+end
+
+----------------------------------------------------------------------------------------------------
+-- RESET INSTANCE (ONLY CROWN..)
+----------------------------------------------------------------------------------------------------
+function Module:ResetInstance()
+    if not IsUnitGrouped("player") or not IsUnitGroupLeader("player") then
+        d(string.format("%s %s", CC.CHAT, CC.ColorString("Permission denied. Crown required to reset instance.", "RD")))
+        return
+    end
+
+    local isVeteranDifficulty = IsUnitUsingVeteranDifficulty("player")
+    SetVeteranDifficulty(not isVeteranDifficulty)
+
+    zo_callLater(function()
+        SetVeteranDifficulty(isVeteranDifficulty)
+
+        local difficultyName = isVeteranDifficulty and "|c7FFFFF[Veteran]|r" or "|c00FF00[Normal]|r"
+        d(string.format("%s Instance reset complete. Restored to: %s", CC.CHAT, difficultyName))
+    end, 500)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -219,8 +239,8 @@ function Module:InitVoteData()
     self.VoteData.pending = totalUsers
     ZO_ClearTable(self.VoteData.VotedTags)
 
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Vote_Timeout")
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Vote_Timeout", 1000, function()
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "RaidleadTools_Vote_Timeout")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "RaidleadTools_Vote_Timeout", 1000, function()
         if GetGameTimeSeconds() >= self.VoteData.endTime then --or self.VoteData.pending <= 0 then
             self:FinishVote()
         end
@@ -230,7 +250,7 @@ end
 ----------------------------------------------------------------------------------------------------
 -- VOTE
 ----------------------------------------------------------------------------------------------------
-function Module:StartVote()
+function Module:SendVoteRequest()
     if not CC.IsRaidlead() then
         d(string.format("%s %s", CC.CHAT, CC.ColorString("Permission denied. Raidlead status required.", "RD")))
         return
@@ -238,7 +258,7 @@ function Module:StartVote()
 
     -- ACTIVE VOTE? STOP
     if self.VoteData.endTime > 0 then
-        local Data = { ID = LUT.VOTE_START, TX = 0, TY = 0, TZ = 0, RX = 0, RY = 0, RZ = 1 } -- RZ = 1 STOP
+        local Data = { ID = LUT.VOTE_REQUEST, TX = 0, TY = 0, TZ = 0, RX = 0, RY = 0, RZ = 1 } -- RZ = 1 STOP
 
         if IsUnitGrouped("player") then
             d(string.format("%s Vote sequence stopped early.", CC.CHAT))
@@ -249,7 +269,7 @@ function Module:StartVote()
         end
     else
         self:InitVoteData()
-        local Data = { ID = LUT.VOTE_START, TX = 0, TY = 0, TZ = 0, RX = 0, RY = 0, RZ = 0 } -- RZ = 0 START
+        local Data = { ID = LUT.VOTE_REQUEST, TX = 0, TY = 0, TZ = 0, RX = 0, RY = 0, RZ = 0 } -- RZ = 0 START
 
         if IsUnitGrouped("player") then
             d(string.format("%s Vote sequence initiated.", CC.CHAT))
@@ -279,7 +299,7 @@ end
 -- FINISH VOTE
 ----------------------------------------------------------------------------------------------------
 function Module:FinishVote()
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Vote_Timeout")
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "RaidleadTools_Vote_Timeout")
     if self.VoteData.endTime == 0 then return end
     self.VoteData.endTime = 0
 
@@ -288,7 +308,7 @@ function Module:FinishVote()
     local timeSec = 5.0
     CC.DisplayNotification:TriggerCustom(timeSec, "VOTE FINISHED!", stringResult)
 
-    PlaySound(SOUNDS.LEVEL_UP)
+    PlaySound(SOUNDS.LEVEL_UP, 1)
 
     if CC.DisplayDialog.isVoteRequested then
         CC.DisplayDialog.isVoteRequested = false
@@ -344,22 +364,6 @@ function Module:HandleBroadcast(unitTag, Data)
     end
 
     ----------------------------------------------------------------------------------------------------
-    -- VOTE START / STOP
-    ----------------------------------------------------------------------------------------------------
-    if Data.ID == LUT.VOTE_START then
-        if Data.RZ == 1 then
-            -- RZ = 1 VOTE STOP
-            if self.VoteData.endTime > 0 then
-                self:FinishVote()
-            end
-        else
-            -- RZ = 0 VOTE START
-            self:InitVoteData()
-            CC.DisplayDialog:RequestVote()
-        end
-    end
-
-    ----------------------------------------------------------------------------------------------------
     -- VOTE REPLY
     ----------------------------------------------------------------------------------------------------
     if Data.ID == LUT.VOTE_REPLY then
@@ -391,12 +395,26 @@ function Module:HandleBroadcast(unitTag, Data)
                 local stringResult = string.format("|c00FF00YES: %d|r - |cFF0000NO: %d|r - |cFFDF00IDC: %d|r", self.VoteData.yes, self.VoteData.no, self.VoteData.idc)
                 CC.DisplayNotification:TriggerCustom(timeSec, replyName, stringResult)
 
-                CC.PlaySound(SOUNDS.COUNTDOWN_TICK, 2)
-
                 if self.VoteData.pending <= 0 then
-                    zo_callLater(function() self:FinishVote() end, 1000 + 500)
+                    zo_callLater(function() self:FinishVote() end, 1000 + 1000)
                 end
             end
+        end
+    end
+
+    ----------------------------------------------------------------------------------------------------
+    -- VOTE START / STOP
+    ----------------------------------------------------------------------------------------------------
+    if Data.ID == LUT.VOTE_REQUEST then
+        if Data.RZ == 1 then
+            -- RZ = 1 VOTE STOP
+            if self.VoteData.endTime > 0 then
+                self:FinishVote()
+            end
+        else
+            -- RZ = 0 VOTE START
+            self:InitVoteData()
+            CC.DisplayDialog:RequestVote()
         end
     end
 
@@ -511,7 +529,7 @@ SLASH_COMMANDS["/cc_break"] = function(arg)
 end
 
 SLASH_COMMANDS["/cc_vote"] = function()
-    CC.RaidleadTools:StartVote()
+    CC.RaidleadTools:SendVoteRequest()
 end
 
 SLASH_COMMANDS["/cc_wipe"] = function()

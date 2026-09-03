@@ -45,7 +45,8 @@ local Module = {
         },
     },
     Default = {
-        timer = 1,
+        timerModeSelf = 1,
+        timerModeGroup = 0,
         enableDrawSelf = true,
         enableDrawGroup = false,
         enableGameAoeFriendlyColor = false,

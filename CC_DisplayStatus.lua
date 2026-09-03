@@ -230,7 +230,9 @@ function Module:Update()
     local hasPlayer = false
     local playerName = GetUnitDisplayName("player")
 
-    for displayName, _ in pairs(CC.UserData or {}) do -- DESYNC NIL ERROR ON USERDATA.. THANKS ZOS. THAT SHOULD NOT BE POSSIBLE BUT WELL.. IT WAS.
+    -- DESYNC NIL ERROR ON USERDATA.. THANKS ZOS.
+    -- THAT SHOULD NOT BE POSSIBLE BUT WELL.. IT WAS.
+    for displayName, _ in pairs(CC.UserData or {}) do
         if displayName == playerName then hasPlayer = true end
         count = count + 1
     end

@@ -90,6 +90,14 @@ function Module:OnGroupMemberConnectedStatus(eventCode, unitTag, isOnline)
     if not CC.SV.enableAddon then return end
 
     if isOnline and self.SV.enableAutoPromote and self.offlineLeaderName then
+
+        -- GROUP HISTORY ALSO HAS THIS FEATURE.. CHECK AND RETURN TO PREVENT SPAM
+        -- CHECK IT OUT: https://www.esoui.com/downloads/info4320
+        if GroupHistory and GroupHistory.SV.enableAutoPromote then
+            CC.Debug("OnGroupMemberConnectedStatus: GroupHistory")
+            return
+        end
+
         local unitName = GetUnitDisplayName(unitTag)
         if unitName == self.offlineLeaderName then
             if IsUnitGroupLeader("player") then
@@ -117,13 +125,14 @@ end
 ----------------------------------------------------------------------------------------------------
 function Module:OnGroupMemberJoined(eventCode, memberCharacterName, memberDisplayName, isLocalPlayer)
     self:UpdateTrackedLeader()
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "CC_OnGroupMemberJoined_Delay")
 
-    local randomDelay = math.random(2000, 3000)
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "CC_OnGroupMemberJoined_Delay", randomDelay, function()
-        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "CC_OnGroupMemberJoined_Delay")
-        CC.Broadcast:SendPingRequest()
-    end)
+    if isLocalPlayer then
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_OnGroupMemberJoined_Delay")
+        EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Events_OnGroupMemberJoined_Delay", 2500, function()
+            EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_OnGroupMemberJoined_Delay")
+            CC.Broadcast:SendSyncRequest(false, true)
+        end)
+    end
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -139,12 +148,18 @@ function Module:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLoca
                 CC.UserData[name] = nil
             end
         end
+
+        CC.DisplayStatus:Update()
+        if CC.DisplayPanel.SV.isVisible then CC.DisplayPanel:UpdateData() end
         return
     end
 
     if memberDisplayName and CC.UserData[memberDisplayName] then
         CC.UserData[memberDisplayName] = nil
         CC.Debug(string.format("OnGroupMemberLeft: [%s] LEFT GROUP", memberDisplayName))
+
+        CC.DisplayStatus:Update()
+        if CC.DisplayPanel.SV.isVisible then CC.DisplayPanel:UpdateData() end
     end
 end
 
@@ -152,10 +167,10 @@ end
 -- GEAR CHANGE
 ----------------------------------------------------------------------------------------------------
 function Module:OnInventorySingleSlotUpdate()
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "EVENT_INVENTORY_SINGLE_SLOT_UPDATED_DELAY")
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "EVENT_INVENTORY_SINGLE_SLOT_UPDATED_DELAY", 250, function()
-        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "EVENT_INVENTORY_SINGLE_SLOT_UPDATED_DELAY")
-        CC.Broadcast:BroadcastStatusUpdate()
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_InventorySingleSlotUpdate_Delay")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Events_InventorySingleSlotUpdate_Delay", 1000, function()
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_InventorySingleSlotUpdate_Delay")
+        CC.Broadcast:SendSyncReply()
     end)
 end
 
@@ -193,15 +208,20 @@ function Module:OnPlayerActivated()
     end
 
     -- INSTALLATION CHECK
-    zo_callLater(function()
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_PlayerActivated_InstallCheck")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Events_PlayerActivated_InstallCheck", 5000, function()
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_PlayerActivated_InstallCheck")
         if CC.SV.isTextureVisible == false then
             CC.DisplayDialog:RequestInstallCheck()
         end
-    end, 2500)
+    end)
 
-    zo_callLater(function()
-        CC.Broadcast:SendPingRequest()
-    end, 5000)
+    -- SEND STATUS REQUEST
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_PlayerActivated_SyncRequest")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Events_PlayerActivated_SyncRequest", 5000, function()
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_PlayerActivated_SyncRequest")
+        CC.Broadcast:SendSyncRequest(false, false)
+    end)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -209,6 +229,13 @@ end
 ----------------------------------------------------------------------------------------------------
 function Module:OnPlayerCombatState(eventCode, inCombat)
     CC.SkillBlocker:UpdateEquippedSkills()
+
+    if inCombat and IsUnitGrouped("player") then
+        local groupIndex = GetGroupIndexByUnitTag("player") or 1
+        zo_callLater(function()
+            CC.Broadcast:SendSyncReply()
+        end, groupIndex * 50)
+    end
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -492,7 +519,7 @@ function CC.DrawCombatVisuals(self, isPlayer, unitTag, ID, TX, TY, TZ, RX, RY, R
     end
 
     -- DRAW LABEL
-    local timerMode = self.SV.timer or 0
+    local timerMode = isPlayer and (self.SV.timerModeSelf or 0) or (self.SV.timerModeGroup or 0)
     if CC.enablePreview then timerMode = math.max(1, timerMode) end
 
     if timerMode > 0 then
@@ -502,7 +529,7 @@ function CC.DrawCombatVisuals(self, isPlayer, unitTag, ID, TX, TY, TZ, RX, RY, R
 
         -- MODES
         if timerMode == 2 then
-            -- VERTICAL, FACING
+            -- VERTICAL + FACING
             labelTY = labelTY + 250 + (math.max(width, height) / 10)
             labelRX = 0
             labelRY = 0
@@ -524,7 +551,6 @@ function CC.DrawCombatVisuals(self, isPlayer, unitTag, ID, TX, TY, TZ, RX, RY, R
 
             displayTime = durationMs,
             Color = Color,
-            isHidden = isHidden,
             durationMs = durationMs,
         })
         CC.DisplayLabel.LabelTimers[trackingKey] = { currentTime = currentTime, startTime = startTime, labelId = labelId }
@@ -562,10 +588,10 @@ function Module:ToggleDebugCombatEvent()
         self.startTimeCombatEvent = GetGameTimeSeconds()
         self.counterCombatEventGained = 0
         self.counterCombatEventFaded = 0
-        d(CC.CHAT .. " |c00FF00Combat event debug enabled.|r")
+        d(CC.CHAT .. " |c00FF00Debug [Combat Event] enabled.|r")
     else
         local time = GetGameTimeSeconds() - self.startTimeCombatEvent
-        d(string.format("%s |cFF0000Combat event debug disabled.|r Duration: %.3fs - |c00FF00Gained: %d|r - |cFF0000Faded: %d|r", CC.CHAT, time, self.counterCombatEventGained, self.counterCombatEventFaded))
+        d(string.format("%s |cFF0000Debug [Combat Event] disabled.|r Duration: %.3fs - |c00FF00Gained: %d|r - |cFF0000Faded: %d|r", CC.CHAT, time, self.counterCombatEventGained, self.counterCombatEventFaded))
     end
 end
 SLASH_COMMANDS["/cc_debug_combatevent"] = function() CC.Events:ToggleDebugCombatEvent() end
@@ -576,9 +602,9 @@ SLASH_COMMANDS["/cc_debug_combatevent"] = function() CC.Events:ToggleDebugCombat
 function Module:ToggleDebugAbility()
     self.SV.enableDebugOnActionSlotAbilityUsed = not self.SV.enableDebugOnActionSlotAbilityUsed
     if self.SV.enableDebugOnActionSlotAbilityUsed then
-        d(CC.CHAT .. " |c00FF00Ability debug enabled.|r")
+        d(CC.CHAT .. " |c00FF00Debug [Ability Used] enabled.|r")
     else
-        d(CC.CHAT .. " |cFF0000Ability debug disabled.|r")
+        d(CC.CHAT .. " |cFF0000Debug [Ability Used] disabled.|r")
     end
 end
 SLASH_COMMANDS["/cc_debug_ability"] = function() CC.Events:ToggleDebugAbility() end
@@ -589,9 +615,9 @@ SLASH_COMMANDS["/cc_debug_ability"] = function() CC.Events:ToggleDebugAbility() 
 function Module:ToggleDebugCacheUnitNames()
     self.SV.enableDebugCacheUnitNames = not self.SV.enableDebugCacheUnitNames
     if self.SV.enableDebugCacheUnitNames then
-        d(CC.CHAT .. " |c00FF00Cache debug enabled.|r")
+        d(CC.CHAT .. " |c00FF00Debug [Cache] enabled.|r")
     else
-        d(CC.CHAT .. " |cFF0000Cache debug disabled.|r")
+        d(CC.CHAT .. " |cFF0000Debug [Cache] disabled.|r")
     end
 end
 SLASH_COMMANDS["/cc_debug_cache"] = function() CC.Events:ToggleDebugCacheUnitNames() end

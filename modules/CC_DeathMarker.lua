@@ -11,6 +11,7 @@ local Module = {
 
     ActiveMarkers = {},
     isLoopRunning = false,
+    lastSoundTime = 0,
 
     TextureChoices = CC.CHEVRON_CHOICES,
     TextureValues  = CC.CHEVRON_VALUES,
@@ -32,7 +33,9 @@ local Module = {
         autoHideSec = 30, -- 0 = INFINITE
 
         enableNotification = true,
-        volumeNotification = 0,
+
+        volumeNotification = 2,
+        soundNotification = SOUNDS.LOCKPICKING_UNLOCKED,
     },
     ---@type table|any
     SV = {},
@@ -65,6 +68,20 @@ function Module:OnDeathStateChanged(eventCode, unitTag, isDead)
 end
 
 ----------------------------------------------------------------------------------------------------
+-- SOUND TEST FOR HOW FAST THE NOTIFICATION SOUND SHOULD REPEAT (MAX)
+----------------------------------------------------------------------------------------------------
+SLASH_COMMANDS["/cc_soundtest"] = function(delayMs)
+    local delay = 100
+    if delayMs and delayMs ~= "" then delay = delayMs end
+    for i = 1, 10 do
+        local del = i * delay
+        zo_callLater(function()
+            CC.PlaySound(CC.DeathMarker.SV.soundNotification, CC.DeathMarker.SV.volumeNotification)
+        end, del)
+    end
+end
+
+----------------------------------------------------------------------------------------------------
 -- NOTIFICATION
 ----------------------------------------------------------------------------------------------------
 function Module:PlayNotification(displayName)
@@ -78,9 +95,12 @@ function Module:PlayNotification(displayName)
     local line1 = iconSkull .. colorHex .. tostring(displayName) .. "|r"
     local line2 = ""
 
-    -- TODO: CHANGE TO THIS BREAKING GLASS SOUND LIKE BANDITS HAD?
+    local currentTime = GetGameTimeMilliseconds()
     if self.SV.volumeNotification > 0 then
-        CC.PlaySound(SOUNDS.DUEL_START, self.SV.volumeNotification)
+        if (currentTime - self.lastSoundTime) > 100 then
+            CC.PlaySound(self.SV.soundNotification, self.SV.volumeNotification)
+            self.lastSoundTime = currentTime
+        end
     end
 
     CC.DisplayNotification:TriggerCustom(timeSec, line1, line2)
@@ -185,7 +205,7 @@ function Module:ClearAll()
 
     if self.isLoopRunning then
         self.isLoopRunning = false
-        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. self.name .. "OnUpdate")
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DeathMarker_OnUpdate")
     end
 end
 
@@ -196,7 +216,7 @@ function Module:StartUpdateLoop()
     if self.isLoopRunning then return end
     self.isLoopRunning = true
 
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. self.name .. "OnUpdate", 100, function()
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DeathMarker_OnUpdate", 100, function()
         self:OnUpdate()
     end)
 end
@@ -282,7 +302,7 @@ function Module:GetMenuOptions()
             ----------------------------------------------------------------------------------------------------
             -- NOTIFICATION
             ----------------------------------------------------------------------------------------------------
-            { type = "header", name = CC.ColorString("NOTIFICATION", "tier3") },
+            { type = "header", name = CC.ColorString("NOTIFICATION & SOUND", "tier3") },
             {
                 type = "checkbox",
                 name = "Enable Center Screen Notification",
@@ -301,6 +321,21 @@ function Module:GetMenuOptions()
                 disabled = function() return not CC.SV.enableAddon end,
             },
             {
+                type = "dropdown",
+                name = "Notification Sound",
+                choices = CC.DEATH_SOUNDS_CHOICES,
+                choicesValues = CC.DEATH_SOUNDS_VALUES,
+                getFunc = function() return self.SV.soundNotification end,
+                setFunc = function(value)
+                    self.SV.soundNotification = value
+                    if self.SV.volumeNotification > 0 then
+                        CC.PlaySound(value, self.SV.volumeNotification)
+                    end
+                end,
+                default = self.Default.soundNotification,
+                disabled = function() return not self.SV.enableNotification or not CC.SV.enableAddon end,
+            },
+            {
                 type = "slider",
                 name = "Volume Notification 0 = OFF",
                 min = 0, max = 10, step = 1,
@@ -308,7 +343,7 @@ function Module:GetMenuOptions()
                 setFunc = function(value)
                     self.SV.volumeNotification = value
                     if value > 0 then
-                        CC.PlaySound(SOUNDS.DUEL_START, value)
+                        CC.PlaySound(self.SV.soundNotification, value)
                     end
                 end,
                 default = self.Default.volumeNotification,

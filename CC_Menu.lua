@@ -55,16 +55,29 @@ function CC.CreateModuleSettings(self, menuName, iconPath)
     })
 
     -- TIMER
-    if self.Default.timer ~= nil then
+    if self.Default.timerModeSelf ~= nil then
         table.insert(ModuleControls, { type = "header", name = CC.ColorString("TIMER", "tier3") })
         table.insert(ModuleControls, {
             type = "dropdown",
-            name = "Show Timer / Countdown (Duration)",
+            name = hasDrawGroup and "Show Timer (Your Cast)" or "Show Timer (Duration)",
             choices = CC.TIMER_CHOICES,
             choicesValues = CC.TIMER_VALUES,
-            getFunc = function() return self.SV.timer end,
-            setFunc = function(value) self.SV.timer = value end,
-            default = self.Default.timer,
+            getFunc = function() return self.SV.timerModeSelf end,
+            setFunc = function(value) self.SV.timerModeSelf = value end,
+            default = self.Default.timerModeSelf,
+            disabled = function() return not CC.SV.enableAddon end,
+        })
+    end
+
+    if hasDrawGroup and self.Default.timerModeGroup ~= nil then
+        table.insert(ModuleControls, {
+            type = "dropdown",
+            name = "Show Timer (Group Member Cast)",
+            choices = CC.TIMER_CHOICES,
+            choicesValues = CC.TIMER_VALUES,
+            getFunc = function() return self.SV.timerModeGroup end,
+            setFunc = function(value) self.SV.timerModeGroup = value end,
+            default = self.Default.timerModeGroup,
             disabled = function() return not CC.SV.enableAddon end,
         })
     end
@@ -74,7 +87,7 @@ function CC.CreateModuleSettings(self, menuName, iconPath)
     if self.Default.enableDrawSelf ~= nil then
         table.insert(ModuleControls, {
             type = "checkbox",
-            name = hasDrawGroup and "Enable Visuals for Your Casts" or "Enable Visuals",
+            name = hasDrawGroup and "Enable Visuals for Your Cast" or "Enable Visuals",
             getFunc = function() return self.SV.enableDrawSelf end,
             setFunc = function(value) self.SV.enableDrawSelf = value end,
             default = self.Default.enableDrawSelf,
@@ -85,7 +98,7 @@ function CC.CreateModuleSettings(self, menuName, iconPath)
     if hasDrawGroup then
         table.insert(ModuleControls, {
             type = "checkbox",
-            name = "Enable Visuals for Group Member Casts",
+            name = "Enable Visuals for Group Member Cast",
             getFunc = function() return self.SV.enableDrawGroup end,
             setFunc = function(value) self.SV.enableDrawGroup = value end,
             default = self.Default.enableDrawGroup,
@@ -209,21 +222,40 @@ function CC.CreateModuleSettings(self, menuName, iconPath)
             disabled = function() return not CC.SV.enableAddon end,
         })
 
-        table.insert(ModuleControls, {
-            type = "slider",
-            name = "Volume Notification 0 = OFF",
-            min = 0, max = 10, step = 1,
-            getFunc = function() return self.SV.volumeNotification end,
-            setFunc = function(value)
-                self.SV.volumeNotification = value
-                if value > 0 then
-                    -- TODO: THIS IS THE SOUND FOR OLORIME.. NEED TO MAKE THAT MODULE SPECIFIC
-                    CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, value)
-                end
-            end,
-            default = self.Default.volumeNotification,
-            disabled = function() return not self.SV.enableNotification or not CC.SV.enableAddon end,
-        })
+        if self.Default.soundNotification ~= nil then
+            table.insert(ModuleControls, {
+                type = "dropdown",
+                name = "Notification Sound",
+                choices = CC.NOTIFICATION_SOUNDS_CHOICES,
+                choicesValues = CC.NOTIFICATION_SOUNDS_VALUES,
+                getFunc = function() return self.SV.soundNotification end,
+                setFunc = function(value)
+                    self.SV.soundNotification = value
+                    if self.SV.volumeNotification and self.SV.volumeNotification > 0 then
+                        CC.PlaySound(value, self.SV.volumeNotification)
+                    end
+                end,
+                default = self.Default.soundNotification,
+                disabled = function() return not CC.SV.enableAddon end,
+            })
+        end
+
+        if self.Default.volumeNotification ~= nil then
+            table.insert(ModuleControls, {
+                type = "slider",
+                name = "Volume Notification 0 = OFF",
+                min = 0, max = 10, step = 1,
+                getFunc = function() return self.SV.volumeNotification end,
+                setFunc = function(value)
+                    self.SV.volumeNotification = value
+                        if value > 0 and self.SV.soundNotification then
+                            CC.PlaySound(self.SV.soundNotification, value)
+                    end
+                end,
+                default = self.Default.volumeNotification,
+                disabled = function() return not CC.SV.enableAddon end,
+            })
+        end
 
         table.insert(ModuleControls, { type = "description", text = "", width = "full", })
     end
@@ -276,7 +308,7 @@ function CC.CreateSettings()
         name = panelName,
         displayName = CC.ColorString("Combat", "tier1") .. " " .. CC.ColorString("Coordination", "WH") .. string.format(" |t%d:%d:%s/icons/logo_cc.dds|t", CC.SIZE_ICON_LAM_PANEL, CC.SIZE_ICON_LAM_PANEL, CC.NAME),
         author = CC.ColorString(CC.AUTHOR, "tier1") .. " " .. CC.ColorString("[PC/EU]", "WH"),
-        version = CC.VERSION,
+        version = string.format("%s-%04d",CC.VERSION, CC.ADDONVERSION),
         registerForRefresh = true,
         registerForDefaults = true,
     }
@@ -379,15 +411,6 @@ function CC.CreateSettings()
                     disabled = function() return not CC.SV.enableAddon end,
                 },
 
-                {
-                    type = "checkbox",
-                    name = "Enable Sound for Notification",
-                    getFunc = function() return CC.DisplayNotification.SV.enableSound end,
-                    setFunc = function(value) CC.DisplayNotification.SV.enableSound = value end,
-                    default = CC.DisplayNotification.Default.enableSound,
-                    disabled = function() return not CC.SV.enableAddon end,
-                },
-
                 ----------------------------------------------------------------------------------------------------
                 -- PANEL WINDOW
                 ----------------------------------------------------------------------------------------------------
@@ -437,7 +460,7 @@ function CC.CreateSettings()
                     type = "dropdown",
                     name = "Anchor Point",
                     tooltip = "Submenu expansion direction.",
-                    choices = { "TOP LEFT", "CENTER LEFT", "BOT LEFT" },
+                    choices = { "TOP", "CENTER", "BOTTOM" },
                     choicesValues = { 1, 2, 3 },
                     getFunc = function() return CC.DisplayPanel.SV.anchorMode or 1 end,
                     setFunc = function(value)
@@ -549,6 +572,7 @@ function CC.CreateSettings()
                 {
                     type = "description",
                     text = "Returns group leader crown to the previous leader upon reconnecting..\n" .. CC.ColorString("Note:", "tier2") .. " Active timeout is 10 minutes.",
+                    -- https://www.esoui.com/downloads/info4320
                     width = "full",
                 },
                 {
@@ -731,7 +755,7 @@ function CC.CreateSettings()
                     type = "button",
                     name = "START VOTE",
                     tooltip = "Initiates a group vote.",
-                    func = function() CC.RaidleadTools:StartVote() end,
+                    func = function() CC.RaidleadTools:SendVoteRequest() end,
                     width = "half",
                     disabled = function() return not CC.SV.enableAddon or not CC.IsRaidlead() end,
                 },

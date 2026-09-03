@@ -40,45 +40,82 @@ local Module = {
         ----------------------------------------------------------------------------------------------------
         -- PULL-TIMER 0 .. 15 (OG)
         ----------------------------------------------------------------------------------------------------
-        [1] = { category = "Raidlead Tools", name = "Pull Timer Custom", shortName = "PULL", Color = { 1, 0.5, 0, 0.75 }, Action = function() CC.RaidleadTools:RequestPull() end },
-        [2] = { category = "Raidlead Tools", name = "Pull Timer 3s", shortName = "PULL 3", Color = { 1, 0.5, 0, 0.75 }, Action = function() CC.RaidleadTools:RequestPull(3) end },
-        [3] = { category = "Raidlead Tools", name = "Pull Timer 5s", shortName = "PULL 5", Color = { 1, 0.5, 0, 0.75 }, Action = function() CC.RaidleadTools:RequestPull(5) end },
-        [4] = { category = "Raidlead Tools", name = "Pull Timer 10s", shortName = "PULL 10", Color = { 1, 0.5, 0, 0.75 }, Action = function() CC.RaidleadTools:RequestPull(10) end },
+        [1] = { category = "Pull Timer", name = "Pull Timer Custom", shortName = "PULL",    Color = { 1, 0.5, 0, 0.75 }, Action = function() CC.RaidleadTools:RequestPull() end },
+        [2] = { category = "Pull Timer", name = "Pull Timer 3s",     shortName = "PULL 3",  Color = { 1, 0.5, 0, 0.75 }, Action = function() CC.RaidleadTools:RequestPull(3) end },
+        [3] = { category = "Pull Timer", name = "Pull Timer 5s",     shortName = "PULL 5",  Color = { 1, 0.5, 0, 0.75 }, Action = function() CC.RaidleadTools:RequestPull(5) end },
+        [4] = { category = "Pull Timer", name = "Pull Timer 10s",    shortName = "PULL 10", Color = { 1, 0.5, 0, 0.75 }, Action = function() CC.RaidleadTools:RequestPull(10) end },
 
         ----------------------------------------------------------------------------------------------------
         -- SLAYER ASSISTANT 16 .. 31 (RD)
         ----------------------------------------------------------------------------------------------------
-        [16] = { category = "Slayer Assistant", name = "Slayer Timer Custom", shortName = "SLAYER", Color = { 1, 0.1, 0.1, 0.75 }, Action = function() if CC.SlayerAssistant then CC.SlayerAssistant:SlayerTrigger(true) end end },
-        [17] = { category = "Slayer Assistant", name = "Slayer Timer 3s", shortName = "SLAYER 3", Color = { 1, 0.1, 0.1, 0.75 }, Action = function() if CC.SlayerAssistant then CC.SlayerAssistant:SlayerTrigger(true, 3) end end },
-        [18] = { category = "Slayer Assistant", name = "Slayer Timer 5s", shortName = "SLAYER 5", Color = { 1, 0.1, 0.1, 0.75 }, Action = function() if CC.SlayerAssistant then CC.SlayerAssistant:SlayerTrigger(true, 5) end end },
+        [16] = { category = "Slayer Assistant", name = "Slayer Timer Custom", shortName = "SLAYER",   Color = { 1, 0.125, 0.125, 0.75 }, Action = function() if CC.SlayerAssistant then CC.SlayerAssistant:SlayerTrigger(true) end end },
+        [17] = { category = "Slayer Assistant", name = "Slayer Timer 3s",     shortName = "SLAYER 3", Color = { 1, 0.125, 0.125, 0.75 }, Action = function() if CC.SlayerAssistant then CC.SlayerAssistant:SlayerTrigger(true, 3) end end },
+        [18] = { category = "Slayer Assistant", name = "Slayer Timer 5s",     shortName = "SLAYER 5", Color = { 1, 0.125, 0.125, 0.75 }, Action = function() if CC.SlayerAssistant then CC.SlayerAssistant:SlayerTrigger(true, 5) end end },
 
         -------------------------------------------------------------------------------------------------------
         -- ARKASIS ASSISTANT 32 .. 47 (YW)
         ----------------------------------------------------------------------------------------------------
-        [32] = { category = "Arkasis Assistant", name = "Arkasis Timer Custom", shortName = "ARKASIS", Color = { 1, 0.875, 0, 0.75 }, Action = function() if CC.ArkasisAssistant then CC.ArkasisAssistant:ArkasisTrigger(true) end end },
-        [33] = { category = "Arkasis Assistant", name = "Arkasis Timer 3s", shortName = "ARKASIS 3", Color = { 1, 0.875, 0, 0.75 }, Action = function() if CC.ArkasisAssistant then CC.ArkasisAssistant:ArkasisTrigger(true, 3) end end },
-        [34] = { category = "Arkasis Assistant", name = "Arkasis Timer 5s", shortName = "ARKASIS 5", Color = { 1, 0.875, 0, 0.75 }, Action = function() if CC.ArkasisAssistant then CC.ArkasisAssistant:ArkasisTrigger(true, 5) end end },
+        [32] = { category = "Arkasis Assistant", name = "Arkasis Timer Custom", shortName = "ARKASIS",   Color = { 1, 0.875, 0, 0.75 }, Action = function() if CC.ArkasisAssistant then CC.ArkasisAssistant:ArkasisTrigger(true) end end },
+        [33] = { category = "Arkasis Assistant", name = "Arkasis Timer 3s",     shortName = "ARKASIS 3", Color = { 1, 0.875, 0, 0.75 }, Action = function() if CC.ArkasisAssistant then CC.ArkasisAssistant:ArkasisTrigger(true, 3) end end },
+        [34] = { category = "Arkasis Assistant", name = "Arkasis Timer 5s",     shortName = "ARKASIS 5", Color = { 1, 0.875, 0, 0.75 }, Action = function() if CC.ArkasisAssistant then CC.ArkasisAssistant:ArkasisTrigger(true, 5) end end },
 
         ----------------------------------------------------------------------------------------------------
-        -- PORT INSTANCE 48 .. 79
+        -- FAST TRAVEL TO INSTANCE 48 .. 79 (VT)
         ----------------------------------------------------------------------------------------------------
-        [48] = { category = "Port Instance", name = "Port Last Trial", shortName = "PORT LAST", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(CC.LaunchPad.SV.lastTrialZoneId) end },
-        [49] = { category = "Port Instance", name = "Port Hel Ra Citadel", shortName = "PORT HRC", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(636) end },
-        [50] = { category = "Port Instance", name = "Port Aetherian Archive", shortName = "PORT AA", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(638) end },
-        [51] = { category = "Port Instance", name = "Port Sanctum Ophidia", shortName = "PORT SO", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(639) end },
-        [52] = { category = "Port Instance", name = "Port Maw of Lorkhaj", shortName = "PORT MOL", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(725) end },
-        [53] = { category = "Port Instance", name = "Port Halls of Fabrication", shortName = "PORT HOF", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(975) end },
-        [54] = { category = "Port Instance", name = "Port Asylum Sanctorium", shortName = "PORT AS", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1000) end },
-        [55] = { category = "Port Instance", name = "Port Cloudrest", shortName = "PORT CR", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1051) end },
-        [56] = { category = "Port Instance", name = "Port Sunspire", shortName = "PORT SS", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1121) end },
-        [57] = { category = "Port Instance", name = "Port Kyne's Aegis", shortName = "PORT KA", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1196) end },
-        [58] = { category = "Port Instance", name = "Port Rockgrove", shortName = "PORT RG", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1263) end },
-        [59] = { category = "Port Instance", name = "Port Dreadsail Reef", shortName = "PORT DSR", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1344) end },
-        [60] = { category = "Port Instance", name = "Port Sanity's Edge", shortName = "PORT SE", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1427) end },
-        [61] = { category = "Port Instance", name = "Port Lucent Citadel", shortName = "PORT LC", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1478) end },
-        [62] = { category = "Port Instance", name = "Port Ossein Cage", shortName = "PORT OC", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1548) end },
-        [63] = { category = "Port Instance", name = "Port Night Market", shortName = "PORT NM", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1559) end },
-        [64] = { category = "Port Instance", name = "Port Opulent Ordeal", shortName = "PORT OO", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:PortToTrial(1565) end },
+        [48] = { category = "Fast Travel Trial", name = "Last Trial Saved", shortName = "LAST TRIAL", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(CC.LaunchPad.SV.lastTrialZoneId) end },
+        [49] = { category = "Fast Travel Trial", name = "Hel Ra Citadel", shortName = "TRIAL HRC", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(636) end },
+        [50] = { category = "Fast Travel Trial", name = "Aetherian Archive", shortName = "TRIAL AA", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(638) end },
+        [51] = { category = "Fast Travel Trial", name = "Sanctum Ophidia", shortName = "TRIAL SO", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(639) end },
+        [52] = { category = "Fast Travel Trial", name = "Maw of Lorkhaj", shortName = "TRIAL MOL", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(725) end },
+        [53] = { category = "Fast Travel Trial", name = "Halls of Fabrication", shortName = "TRIAL HOF", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(975) end },
+        [54] = { category = "Fast Travel Trial", name = "Asylum Sanctorium", shortName = "TRIAL AS", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1000) end },
+        [55] = { category = "Fast Travel Trial", name = "Cloudrest", shortName = "TRIAL CR", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1051) end },
+        [56] = { category = "Fast Travel Trial", name = "Sunspire", shortName = "TRIAL SS", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1121) end },
+        [57] = { category = "Fast Travel Trial", name = "Kyne's Aegis", shortName = "TRIAL KA", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1196) end },
+        [58] = { category = "Fast Travel Trial", name = "Rockgrove", shortName = "TRIAL RG", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1263) end },
+        [59] = { category = "Fast Travel Trial", name = "Dreadsail Reef", shortName = "TRIAL DSR", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1344) end },
+        [60] = { category = "Fast Travel Trial", name = "Sanity's Edge", shortName = "TRIAL SE", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1427) end },
+        [61] = { category = "Fast Travel Trial", name = "Lucent Citadel", shortName = "TRIAL LC", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1478) end },
+        [62] = { category = "Fast Travel Trial", name = "Ossein Cage", shortName = "TRIAL OC", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1548) end },
+        [63] = { category = "Fast Travel Trial", name = "Night Market", shortName = "TRIAL NM", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1559) end },
+        -- [64] = { category = "Fast Travel Trial", name = "Opulent Ordeal", shortName = "TRIAL OO", Color = { 0.75, 0.25, 1, 0.75 }, Action = function() CC.LaunchPad:FastTravelToTrial(1565) end },
+
+        ----------------------------------------------------------------------------------------------------
+        -- RAIDLEAD TOOLS 80 .. 95 (GN)
+        ----------------------------------------------------------------------------------------------------
+        [80] = { category = "Raidlead Tools", name = "Reset Instance", shortName = "RESET INST", Color = { 0, 1, 0, 0.75 }, Action = function() CC.RaidleadTools:ResetInstance() end },
+
+        ----------------------------------------------------------------------------------------------------
+        -- WAYSHRINES: ALDMERI DOMINION (128 .. 143)
+        ----------------------------------------------------------------------------------------------------
+        [128] = { category = "Fast Travel Aldmeri", name = "Auridon", shortName = "AURIDON", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(121) end },
+        [129] = { category = "Fast Travel Aldmeri", name = "Grahtwood", shortName = "GRAHTWOOD", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(214) end },
+        [130] = { category = "Fast Travel Aldmeri", name = "Greenshade", shortName = "GREENSHADE", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(143) end },
+        [131] = { category = "Fast Travel Aldmeri", name = "Khenarthi's Roost", shortName = "KHENARTHI'S", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(141) end },
+        [132] = { category = "Fast Travel Aldmeri", name = "Malabal Tor", shortName = "MALABAL TOR", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(106) end },
+        [133] = { category = "Fast Travel Aldmeri", name = "Reaper's March", shortName = "REAPER'S", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(162) end },
+
+        ----------------------------------------------------------------------------------------------------
+        -- WAYSHRINES: DAGGERFALL COVENANT (144 .. 159)
+        ----------------------------------------------------------------------------------------------------
+        [144] = { category = "Fast Travel Daggerfall", name = "Alik'r Desert", shortName = "ALIK'R DESERT", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(43) end },
+        [145] = { category = "Fast Travel Daggerfall", name = "Bangkorai", shortName = "BANGKORAI", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(33) end },
+        [146] = { category = "Fast Travel Daggerfall", name = "Betnikh", shortName = "BETNIKH", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(181) end },
+        [147] = { category = "Fast Travel Daggerfall", name = "Glenumbra", shortName = "GLENUMBRA", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(62) end },
+        [148] = { category = "Fast Travel Daggerfall", name = "Rivenspire", shortName = "RIVENSPIRE", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(55) end },
+        [149] = { category = "Fast Travel Daggerfall", name = "Stormhaven", shortName = "STORMHAVEN", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(56) end },
+        [150] = { category = "Fast Travel Daggerfall", name = "Stros M'Kai", shortName = "STROS M'KAI", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(138) end },
+
+        ----------------------------------------------------------------------------------------------------
+        -- WAYSHRINES: EBONHEART PACT (160 .. 175)
+        ----------------------------------------------------------------------------------------------------
+        [160] = { category = "Fast Travel Ebonheart", name = "Bal Foyen", shortName = "BAL FOYEN", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(173) end },
+        [161] = { category = "Fast Travel Ebonheart", name = "Bleakrock Isle", shortName = "BLEAKROCK", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(172) end },
+        [162] = { category = "Fast Travel Ebonheart", name = "Deshaan", shortName = "DESHAAN", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(28) end },
+        [163] = { category = "Fast Travel Ebonheart", name = "Eastmarch", shortName = "EASTMARCH", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(87) end },
+        [164] = { category = "Fast Travel Ebonheart", name = "The Rift", shortName = "THE RIFT", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(109) end },
+        [165] = { category = "Fast Travel Ebonheart", name = "Shadowfen", shortName = "SHADOWFEN", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(48) end },
+        [166] = { category = "Fast Travel Ebonheart", name = "Stonefalls", shortName = "STONEFALLS", Color = { 1, 1, 0.75, 0.75 }, Action = function() CC.LaunchPad:FastTravelToWayshrine(65) end },
 
         ----------------------------------------------------------------------------------------------------
         -- WIZARDS WARDROBE 512 .. 527
@@ -86,7 +123,7 @@ local Module = {
         [512] = { category = "Wizards Wardrobe", name = "WW Next Setup", shortName = "WW NEXT", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.LoadSetupAdjacent then WizardsWardrobe.LoadSetupAdjacent(1) end end },
         [513] = { category = "Wizards Wardrobe", name = "WW Previous Setup", shortName = "WW PREV", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.LoadSetupAdjacent then WizardsWardrobe.LoadSetupAdjacent(-1) end end },
         [514] = { category = "Wizards Wardrobe", name = "WW Reload Current", shortName = "WW RELOAD", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.LoadSetupAdjacent then WizardsWardrobe.LoadSetupAdjacent(0) end end },
-        -- WW PREBUFF 528 .. 559
+
         [528] = { category = "Wizards Wardrobe", name = "WW Load Setup 1", shortName = "WW #1", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.LoadSetupCurrent then WizardsWardrobe.LoadSetupCurrent(1, false) end end },
         [529] = { category = "Wizards Wardrobe", name = "WW Load Setup 2", shortName = "WW #2", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.LoadSetupCurrent then WizardsWardrobe.LoadSetupCurrent(2, false) end end },
         [530] = { category = "Wizards Wardrobe", name = "WW Load Setup 3", shortName = "WW #3", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.LoadSetupCurrent then WizardsWardrobe.LoadSetupCurrent(3, false) end end },
@@ -112,7 +149,7 @@ local Module = {
         [550] = { category = "Wizards Wardrobe", name = "WW Load Setup 23", shortName = "WW #23", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.LoadSetupCurrent then WizardsWardrobe.LoadSetupCurrent(23, false) end end },
         [551] = { category = "Wizards Wardrobe", name = "WW Load Setup 24", shortName = "WW #24", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.LoadSetupCurrent then WizardsWardrobe.LoadSetupCurrent(24, false) end end },
         [552] = { category = "Wizards Wardrobe", name = "WW Load Setup 25", shortName = "WW #25", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.LoadSetupCurrent then WizardsWardrobe.LoadSetupCurrent(25, false) end end },
-        -- WW PREBUFF 560 .. 575
+
         [560] = { category = "Wizards Wardrobe", name = "WW Prebuff 1", shortName = "WW PB 1", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.prebuff and WizardsWardrobe.prebuff.Prebuff then WizardsWardrobe.prebuff.Prebuff(1) end end },
         [561] = { category = "Wizards Wardrobe", name = "WW Prebuff 2", shortName = "WW PB 2", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.prebuff and WizardsWardrobe.prebuff.Prebuff then WizardsWardrobe.prebuff.Prebuff(2) end end },
         [562] = { category = "Wizards Wardrobe", name = "WW Prebuff 3", shortName = "WW PB 3", Color = { 0, 1, 0.875, 0.75 }, Action = function() if WizardsWardrobe and WizardsWardrobe.prebuff and WizardsWardrobe.prebuff.Prebuff then WizardsWardrobe.prebuff.Prebuff(3) end end },
@@ -123,6 +160,7 @@ local Module = {
     ActivePads = {},
 
     Default = {
+        enableLaunchPads = true,
         SavedPads = {},
         width = 300,
         height = 300,
@@ -139,10 +177,21 @@ local Module = {
 
         activeTrigger = 1,
         lastTrialZoneId = 0,
+
+        enableDebug = false,
     },
     ---@type table|any
     SV = {},
 }
+
+----------------------------------------------------------------------------------------------------
+-- DEBUG
+----------------------------------------------------------------------------------------------------
+function Module:Debug(message)
+    if not message then return end
+    if not self.SV.enableDebug then return end
+    d("|cFF7F00[CC " .. self.name .. " Debug]|r " .. tostring(message))
+end
 
 ----------------------------------------------------------------------------------------------------
 -- CUSTOM ENABLE / DISABLE
@@ -159,9 +208,38 @@ function Module:CustomDisable()
 end
 
 ----------------------------------------------------------------------------------------------------
--- PORT TO TRIAL (NODE)
+-- FAST TRAVEL TO WAYSHRINE (NODE)
 ----------------------------------------------------------------------------------------------------
-function Module:PortToTrial(targetZoneId)
+function Module:FastTravelToWayshrine(targetNodeId)
+    if not targetNodeId or targetNodeId == 0 then
+        d(string.format("%s %s", CC.CHAT, CC.ColorString("Invalid or missing Node ID.", "RD")))
+        return
+    end
+
+    local known, name = GetFastTravelNodeInfo(targetNodeId)
+    if not name or name == "" then
+        d(string.format("%s %s", CC.CHAT, CC.ColorString("Wayshrine not found.", "RD")))
+        return
+    end
+
+    local cleanName = zo_strformat("<<1>>", name)
+    if not known then
+        d(string.format("%s %s", CC.CHAT, CC.ColorString("Wayshrine [" .. cleanName .. "] is not discovered yet.", "RD")))
+        return
+    end
+
+    d(string.format("%s Traveling to: |c7FFFFF[%s]|r", CC.CHAT, cleanName))
+    CC.DisplayNotification:TriggerCustom(2.0, string.format("FAST TRAVEL: [%s]", cleanName), "", false)
+
+    zo_callLater(function()
+        FastTravelToNode(targetNodeId)
+    end, 1000)
+end
+
+----------------------------------------------------------------------------------------------------
+-- FAST TRAVEL TO TRIAL (NODE)
+----------------------------------------------------------------------------------------------------
+function Module:FastTravelToTrial(targetZoneId)
     if not targetZoneId or targetZoneId == 0 then
         d(string.format("%s %s", CC.CHAT, CC.ColorString("No recent trial instance found.", "RD")))
         return
@@ -175,17 +253,13 @@ function Module:PortToTrial(targetZoneId)
         return
     end
 
-    local nodeId = self.TrialNodeIds[targetZoneId]
-    if nodeId and nodeId > 0 then
-
+    local targetNodeId = self.TrialNodeIds[targetZoneId]
+    if targetNodeId and targetNodeId > 0 then
         zo_callLater(function()
-            FastTravelToNode(nodeId)
+            FastTravelToNode(targetNodeId)
         end, 1000)
-
-
-
-        --FastTravelToNode(nodeId)
-        d(string.format("%s Porting to %s...", CC.CHAT, trialName))
+        d(string.format("%s Traveling to: |c7FFFFF[%s]|r", CC.CHAT, trialName))
+        CC.DisplayNotification:TriggerCustom(2.0, string.format("FAST TRAVEL: [%s]", trialName), "", false)
     else
         d(string.format("%s %s", CC.CHAT, CC.ColorString("Node for " .. trialName .. " is missing.", "RD")))
     end
@@ -200,12 +274,13 @@ function Module:LoadPadsForCurrentZone()
     local zoneId = GetUnitRawWorldPosition("player")
     if not zoneId or zoneId == 0 then return end
 
-    -- CACHE "PORT LAST"
+    -- CACHE "LAST TRIAL"
     local cleanZoneId = CC.GetCleanZoneId(zoneId)
     if CC.TrialZones[cleanZoneId] then
         self.SV.lastTrialZoneId = cleanZoneId
     end
 
+    if not self.SV.enableLaunchPads then return end
     if not self.SV.SavedPads[zoneId] then return end
 
     for index, PadData in ipairs(self.SV.SavedPads[zoneId]) do
@@ -245,7 +320,7 @@ function Module:DrawPad(index, PadData)
 end
 
 ----------------------------------------------------------------------------------------------------
--- CREATE PAD VISUALS (DYNAMISCHES NACHLADEN)
+-- CREATE PAD VISUALS
 ----------------------------------------------------------------------------------------------------
 function Module:CreatePadVisuals(index, PadCache)
     local heading = PadCache.Data.RY
@@ -416,7 +491,13 @@ function Module:PlaceOnSelf()
     }
 
     table.insert(self.SV.SavedPads[zoneId], newPad)
-    d(string.format("%s LaunchPad placed on self.", CC.CHAT))
+
+    if not self.SV.enableLaunchPads then
+        d(string.format("%s LaunchPad saved (Hidden due to Masterswitch).", CC.CHAT))
+    else
+        self:Debug(string.format("%s LaunchPad placed on self.", CC.CHAT))
+    end
+
     self:LoadPadsForCurrentZone()
 end
 
@@ -425,7 +506,7 @@ end
 ----------------------------------------------------------------------------------------------------
 function Module:StartAiming()
     self.isAiming = true
-    d(string.format("%s Place LaunchPad (Block = Place | Menu = Cancel)", CC.CHAT))
+    self:Debug("Place LaunchPad (Block = Place | Menu = Cancel)")
 
     self:DrawPreviewEffect()
     local wasBlocking = IsBlockActive()
@@ -511,7 +592,13 @@ function Module:ConfirmPlacement()
     }
 
     table.insert(self.SV.SavedPads[zoneId], newPad)
-    d(string.format("%s LaunchPad placed.", CC.CHAT))
+
+    if not self.SV.enableLaunchPads then
+        d(string.format("%s LaunchPad saved (Hidden due to Masterswitch).", CC.CHAT))
+    else
+        self:Debug(string.format("%s LaunchPad placed.", CC.CHAT))
+    end
+
     self:LoadPadsForCurrentZone()
 end
 
@@ -546,6 +633,42 @@ function Module:DeleteClosestPad()
         self:LoadPadsForCurrentZone()
     else
         d(string.format("%s No LaunchPad found within 10 meters.", CC.CHAT))
+    end
+end
+
+----------------------------------------------------------------------------------------------------
+-- FIND NODE
+----------------------------------------------------------------------------------------------------
+SLASH_COMMANDS["/cc_node"] = function(arg)
+    local searchString = ""
+    local displayName = ""
+
+    if arg and arg ~= "" then
+        searchString = string.lower(arg)
+        displayName = arg
+    else
+        displayName = zo_strformat("<<1>>", GetUnitZone("player"))
+        searchString = string.lower(displayName)
+    end
+
+    local count = 0
+    d(CC.CHAT .. " Nodes for: |cFFFFFF" .. displayName .. "|r")
+
+    for i = 1, GetNumFastTravelNodes() do
+        local known, name = GetFastTravelNodeInfo(i)
+        if name and name ~= "" then
+            local cleanName = zo_strformat("<<1>>", name)
+
+            -- STRING-MATCHING
+            if string.find(string.lower(cleanName), searchString) then
+                d(string.format("NodeIndex: |c00FF00%d|r - Name: %s", i, cleanName))
+                count = count + 1
+            end
+        end
+    end
+
+    if count == 0 then
+        d(CC.CHAT .. " No nodes found.")
     end
 end
 
@@ -612,6 +735,22 @@ function Module:GetMenuOptions()
                 type = "description",
                 text = "Place permanent trigger pads on the ground.\nStepping on a pad automatically triggers its assigned action or timer.\n\n" .. CC.ColorString("Note:", "tier2") .. " Group tools and timers require [CC] Raidlead status.\nPersonal actions, like Wizard's Wardrobe, work for everyone.",
                 width = "full",
+            },
+
+            {
+                type = "checkbox",
+                name = CC.ColorString("Enable / Show LaunchPads", "GN"),
+                getFunc = function() return self.SV.enableLaunchPads end,
+                setFunc = function(value)
+                    self.SV.enableLaunchPads = value
+                    if value then
+                        self:LoadPadsForCurrentZone()
+                    else
+                        self:ClearAllPads()
+                    end
+                end,
+                default = self.Default.enableLaunchPads,
+                disabled = function() return not CC.SV.enableAddon end,
             },
 
             { type = "header", name = CC.ColorString("PLACEMENT", "tier3") },

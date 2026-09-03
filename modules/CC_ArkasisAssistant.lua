@@ -44,8 +44,8 @@ local Module = {
     },
 
     Default = {
-        visibilitySideSelf = 1, -- 1 = VISIBLE
-        visibilitySideOther = 3, -- 3 = HIDDEN
+        visibilitySideSelf = 1, -- 1 = VISIBILITY_VISIBLE
+        visibilitySideOther = 3, -- 3 = VISIBILITY_HIDDEN
 
         enableGameAoeFriendlyColor = false,
 
@@ -59,7 +59,9 @@ local Module = {
         durationMs = 5000,
         AssignmentByZone = {},
         enableAutoPrompt = true,
-        enableSound = true,
+
+        soundNotification = SOUNDS.ABILITY_ULTIMATE_READY,
+        volumeNotification = 2,
 
         enableDebug = false,
     },
@@ -169,15 +171,14 @@ end
 -- ASSIGN POS
 ----------------------------------------------------------------------------------------------------
 function Module:AssignPlayerSide(sideId, targetZoneId, isSilent)
+    -- SPECIFIC OR CURRENT ZONE?
     local zoneId = CC.GetCleanZoneId(targetZoneId)
 
     if self.SV.AssignmentByZone[zoneId] ~= sideId then
         self.SV.AssignmentByZone[zoneId] = sideId
         local activeZoneId = CC.GetCleanZoneId()
 
-        if zoneId == activeZoneId then
-            CC.Broadcast:BroadcastStatusUpdate()
-        end
+        if zoneId == activeZoneId then CC.Broadcast:SendSyncReply() end
 
         if not isSilent then
             local sideName = self:GetSideNameFromSideId(sideId)
@@ -185,6 +186,7 @@ function Module:AssignPlayerSide(sideId, targetZoneId, isSilent)
             d(string.format("%s Assignment confirmed. Zone: [%s] - Stack: %s", CC.CHAT, zoneName, sideName))
         end
 
+        -- REFRESH PANEL
         if CC.DisplayPanel.SV.isVisible then
             CC.DisplayPanel:UpdateData()
         end
@@ -629,12 +631,6 @@ end
 -- CUSTOM ENABLE / DISABLE
 ---------------------------------------------------------------------------
 function Module:CustomEnable()
-    if IsUnitGrouped("player") then
-        zo_callLater(function()
-            CC.Broadcast:SendPingRequest(false)
-        end, 2500)
-    end
-
     -- YEAH YEAH I KNOW.. LIBCUSTOMMENU IS IN THE DEPENDENCIES. BUT I MIGHT CHANGE THAT.
     if LibCustomMenu then
         LibCustomMenu:RegisterGroupListContextMenu(function(Data) self:OnContextMenu(Data) end, LibCustomMenu.CATEGORY_LATE)
@@ -809,6 +805,40 @@ function Module:GetMenuOptions()
             },
 
             ----------------------------------------------------------------------------------------------------
+            -- NOTIFICATION SOUND
+            ----------------------------------------------------------------------------------------------------
+            { type = "header", name = CC.ColorString("NOTIFICATION SOUND", "tier3") },
+            {
+                type = "dropdown",
+                name = "Notification Sound",
+                choices = CC.NOTIFICATION_SOUNDS_CHOICES,
+                choicesValues = CC.NOTIFICATION_SOUNDS_VALUES,
+                getFunc = function() return self.SV.soundNotification end,
+                setFunc = function(value)
+                    self.SV.soundNotification = value
+                    if self.SV.volumeNotification > 0 then
+                        CC.PlaySound(value, self.SV.volumeNotification)
+                    end
+                end,
+                default = self.Default.soundNotification,
+                disabled = function() return not CC.SV.enableAddon end,
+            },
+            {
+                type = "slider",
+                name = "Volume Notification 0 = OFF",
+                min = 0, max = 10, step = 1,
+                getFunc = function() return self.SV.volumeNotification end,
+                setFunc = function(value)
+                    self.SV.volumeNotification = value
+                    if value > 0 then
+                        CC.PlaySound(self.SV.soundNotification, value)
+                    end
+                end,
+                default = self.Default.volumeNotification,
+                disabled = function() return not CC.SV.enableAddon end,
+            },
+
+            ----------------------------------------------------------------------------------------------------
             -- TARGETED ASSIGNMENT
             ----------------------------------------------------------------------------------------------------
             { type = "header", name = CC.ColorString("RAIDLEAD ONLY: (RE-) ASSIGN MEMBER", "tier3") },
@@ -902,14 +932,6 @@ function Module:GetMenuOptions()
             },
             {
                 type = "divider",
-            },
-            {
-                type = "checkbox",
-                name = "Enable Notification Sound",
-                getFunc = function() return self.SV.enableSound end,
-                setFunc = function(value) self.SV.enableSound = value end,
-                default = self.Default.enableSound,
-                disabled = function() return not CC.SV.enableAddon end,
             },
             {
                 type = "checkbox",

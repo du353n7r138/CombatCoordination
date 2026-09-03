@@ -287,12 +287,12 @@ end
 function Module:StartUpdateLoop()
     if self.isUpdateLoop then return end
     self.isUpdateLoop = true
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. self.name .. "OnUpdate", self.SV.updateMs, function() self:OnUpdate() end)
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "PathTracking_OnUpdate", self.SV.updateMs, function() self:OnUpdate() end)
 end
 
 function Module:StopUpdateLoop()
     self.isUpdateLoop = false
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. self.name .. "OnUpdate")
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "PathTracking_OnUpdate")
 end
 
 ----------------------------------------------------------------------------------------------------

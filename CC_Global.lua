@@ -2,11 +2,11 @@
 -- GLOBAL NAMESPACE AND DEFAULTS
 ----------------------------------------------------------------------------------------------------
 CombatCoordination = {
-    NAME    = "CombatCoordination",
-    AUTHOR  = "@Duesentrieb",
-    ADDON   = 0006,
-    VERSION = "20260819",
-    CHAT    = "|cFF7F00[CC]|r",
+    NAME = "CombatCoordination",
+    AUTHOR = "@Duesentrieb",
+    ADDONVERSION = 0007,
+    VERSION = "20260903",
+    CHAT = "|cFF7F00[CC]|r",
 
     ----------------------------------------------------------------------------------------------------
     -- DEFAULT VALUES
@@ -96,7 +96,7 @@ CombatCoordination = {
 
     ----------------------------------------------------------------------------------------------------
     DRAW_TIER_CHOICES   = { "High (2)", "Medium (1)", "Low (0)", },
-    DRAW_TIER_VALUES    = { DT_HIGH, DT_MEDIUM, DT_LOW},
+    DRAW_TIER_VALUES    = { DT_HIGH, DT_MEDIUM, DT_LOW, },
     DRAW_LAYER_CHOICES  = { "Overlay (3)", "Text (2)", "Controls (1)", "Background (0)", },
     DRAW_LAYER_VALUES   = { DL_OVERLAY, DL_TEXT, DL_CONTROLS, DL_BACKGROUND, },
     ----------------------------------------------------------------------------------------------------
@@ -150,5 +150,82 @@ CombatCoordination = {
     LETTER_CHOICES = { "Letter L/R", },
     LETTER_VALUES = {
         "/textures/letter_query.dds",
+    },
+
+    DEATH_SOUNDS_CHOICES = {
+        "Outfitting Mace",
+        "Outfitting Light",
+        "Undaunted Transact",
+        "Lockpicking Unlocked",
+    },
+    DEATH_SOUNDS_VALUES = {
+        SOUNDS.OUTFIT_WEAPON_TYPE_MACE,
+        SOUNDS.OUTFIT_ARMOR_TYPE_LIGHT,
+        SOUNDS.UNDAUNTED_KEY_TRANSACT,
+        SOUNDS.LOCKPICKING_UNLOCKED,
+    },
+
+    NOTIFICATION_SOUNDS_CHOICES = {
+        "Ability Ultimate Ready",
+        "Justice State Changed",
+        "Fanfare Sparks",
+        "New Notification",
+        "BG Flag Returned",
+        "Level Up Reward Claim",
+        "Item Apply Enchant",
+        "Console Game Enter",
+        "Raid Trial Failed",
+        "Champion Points Committed",
+        "BG Flag Captured",
+        "Quest Complete",
+    },
+
+    NOTIFICATION_SOUNDS_VALUES = {
+        SOUNDS.ABILITY_ULTIMATE_READY,
+        SOUNDS.JUSTICE_STATE_CHANGED,
+        SOUNDS.GIFT_INVENTORY_VIEW_FANFARE_SPARKS,
+        SOUNDS.NEW_NOTIFICATION,
+        SOUNDS.BATTLEGROUND_CAPTURE_FLAG_RETURNED,
+        SOUNDS.LEVEL_UP_REWARD_CLAIM_APPEAR,
+        SOUNDS.INVENTORY_ITEM_APPLY_ENCHANT,
+        SOUNDS.CONSOLE_GAME_ENTER,
+        SOUNDS.RAID_TRIAL_FAILED,
+        SOUNDS.CHAMPION_POINTS_COMMITTED,
+        SOUNDS.BATTLEGROUND_CAPTURE_FLAG_CAPTURED_BY_OTHER_TEAM,
+        SOUNDS.QUEST_COMPLETED,
+    },
+
+    PROC_SOUNDS_CHOICES = {
+        "Collectible On Cooldown",
+        "Telvar Multiplier Max",
+        "Justice Pickpocket Bonus",
+        "BG BallTaken Other Team",
+        "Telvar Multiplier Up",
+        "Ability Morph Purchased",
+        "Objective Complete",
+        "Telvar Gained",
+        "Crown Crates Card Flipping",
+        "Fanfare Sparks",
+        "Crown Crates Selected",
+        "Crown Crates Chosen",
+        "Ability Upgrade Purchased",
+        "Ability Ultimate Ready",
+    },
+
+    PROC_SOUNDS_VALUES = {
+        SOUNDS.COLLECTIBLE_ON_COOLDOWN,
+        SOUNDS.TELVAR_MULTIPLIERMAX,
+        SOUNDS.JUSTICE_PICKPOCKET_BONUS,
+        SOUNDS.BATTLEGROUND_MURDERBALL_TAKEN_OTHER_TEAM,
+        SOUNDS.TELVAR_MULTIPLIERUP,
+        SOUNDS.ACTIVE_SKILL_MORPH_CHOSEN,
+        SOUNDS.QUEST_OBJECTIVE_COMPLETE,
+        SOUNDS.TELVAR_GAINED,
+        SOUNDS.CROWN_CRATES_CARD_FLIPPING,
+        SOUNDS.GIFT_INVENTORY_VIEW_FANFARE_SPARKS,
+        SOUNDS.CROWN_CRATES_MANIFEST_SELECTED,
+        SOUNDS.CROWN_CRATES_MANIFEST_CHOSEN,
+        SOUNDS.PASSIVE_SKILL_RANK_INCREASED,
+        SOUNDS.ABILITY_ULTIMATE_READY,
     },
 }

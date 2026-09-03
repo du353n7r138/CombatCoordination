@@ -7,7 +7,7 @@ local LUT = CC.LUT.POINTER
 local Module = {
     name      = "Pointer",
     menuName  = "POINTER - FLARE 2.0",
-    iconPath  = "/esoui/art/icons/ability_ava_revealing_flare.dds",
+    iconPath  = "/esoui/art/icons/ability_ava_scorching_flare.dds",
     menuLayer = 0,
 
     isAiming = false,

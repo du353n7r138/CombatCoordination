@@ -11,8 +11,24 @@
             <Action name="COMBATCOORDINATION_DEBUGCOMBATEVENT_TOGGLE">
                 <Down>CombatCoordination.Keybinds.DebugCombatEventToggle()</Down>
             </Action>
+            <Action name="COMBATCOORDINATION_PORT_PRIMARY_HOUSE">
+                <Down>CombatCoordination.Keybinds.PortPrimaryHouse()</Down>
+            </Action>
 
             <!-- RAIDLEAD TOOLS -->
+            <Action name="COMBATCOORDINATION_RESET_INSTANCE">
+                <Down>CombatCoordination.Keybinds.ResetInstance()</Down>
+            </Action>
+            <Action name="COMBATCOORDINATION_WIPE_PLEASE">
+                <Down>CombatCoordination.Keybinds.WipePlease()</Down>
+            </Action>
+            <Action name="COMBATCOORDINATION_PORT_IN_PLEASE">
+                <Down>CombatCoordination.Keybinds.PortInPlease()</Down>
+            </Action>
+            <Action name="COMBATCOORDINATION_EXITINSTANCE_REQUEST">
+                <Down>CombatCoordination.Keybinds.RequestExitInstance()</Down>
+            </Action>
+
             <Action name="COMBATCOORDINATION_PULLTIMER_CUSTOM">
                 <Down>CombatCoordination.Keybinds.PullTimerCustom()</Down>
             </Action>
@@ -28,9 +44,6 @@
 
             <Action name="COMBATCOORDINATION_BREAKTIMER_TOGGLE">
                 <Down>CombatCoordination.Keybinds.BreakTimerToggle()</Down>
-            </Action>
-            <Action name="COMBATCOORDINATION_EXITINSTANCE_REQUEST">
-                <Down>CombatCoordination.Keybinds.RequestExitInstance()</Down>
             </Action>
             <Action name="COMBATCOORDINATION_SLAYERASSISTANT_TOGGLE">
                 <Down>CombatCoordination.Keybinds.SlayerAssistantToggle()</Down>

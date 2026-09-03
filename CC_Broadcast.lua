@@ -7,20 +7,44 @@ local LUT = CC.LUT.SYNC
 local Module = {
     name = "Broadcast",
     Handler = nil,
-    BroadcastModules = {},
+    Modules = {},
 
     LutDataIn = {},
     LutDataOut = {},
 
-    startTime = 0,
+    requestStartTime = 0,
+    echoStartTime = 0,
     timeoutMs = 5000,
+    isManualRequest = false,
     isReceivingSync = false,
     isReceivingVersion = false,
 
-    Default = { enableDebugOnData = false, },
+    lastRequestTime = 0,
+
+    Default = {
+        enableDebugOnData = false,
+        enableDebugSync = false,
+    },
     ---@type table|any
     SV = {},
 }
+
+----------------------------------------------------------------------------------------------------
+-- DEBUG SYNCHRONIZATION
+----------------------------------------------------------------------------------------------------
+function Module:DebugSync(msg)
+    if not self.SV.enableDebugSync then return end
+    d(CC.CHAT .. " |c00FF00Sync|r " .. msg)
+end
+
+SLASH_COMMANDS["/cc_debug_sync"] = function()
+    Module.SV.enableDebugSync = not Module.SV.enableDebugSync
+    if Module.SV.enableDebugSync then
+        d(CC.CHAT .. " |c00FF00Debug [Broadcast Sync] enabled.|r")
+    else
+        d(CC.CHAT .. " |cFF0000Debug [Broadcast Sync] disabled.|r")
+    end
+end
 
 ----------------------------------------------------------------------------------------------------
 -- CUSTOM ENABLE / DISABLE
@@ -32,15 +56,16 @@ end
 function Module:CustomDisable()
     self.isReceivingSync = false
     self.isReceivingVersion = false
-    self.startTime = 0
+    self.requestStartTime = 0
+    self.echoStartTime = 0
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Broadcast_Sync_Initial")
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Broadcast_Sync_Loop")
 end
 
 ----------------------------------------------------------------------------------------------------
 -- TEST COMMAND / DEBUG
 ----------------------------------------------------------------------------------------------------
 SLASH_COMMANDS["/cc_test"] = function()
-
-    --local abilityId = 107141 -- OLORIME
     local abilityId = 32947 -- STANDARD OF MIGHT
     local result = ACTION_RESULT_EFFECT_GAINED
     local sourceType = COMBAT_UNIT_TYPE_PLAYER
@@ -57,7 +82,10 @@ end
 ----------------------------------------------------------------------------------------------------
 -- SEND STATUS UPDATE (GEAR CHANGE, ASSIGNMENT)
 ----------------------------------------------------------------------------------------------------
-function Module:BroadcastStatusUpdate()
+function Module:SendSyncReply()
+    -- WATCHDOG..
+    self:CleanUpGhosts()
+
     local playerZoneId = CC.GetCleanZoneId()
 
     local slayerSide = CC.SlayerAssistant:GetSideIdFromZoneId(playerZoneId) or 0
@@ -70,56 +98,73 @@ function Module:BroadcastStatusUpdate()
     local RY = (slayerSide * 10) + slayerSet
     local RZ = (arkasisSide * 10) + arkasisSet
 
-    self:UpdateAddonUsers("player", 0, CC.IsRaidlead(), RY, RZ)
+    self:UpdateAddonUsers("player", nil, CC.IsRaidlead(), RY, RZ)
 
     if IsUnitGrouped("player") then
-        self:Send({ ID = LUT.STATUS_REPLY, TX = 0, TY = 0, TZ = 0, RX = RX, RY = RY, RZ = RZ })
+        self:DebugSync("SendSyncReply()")
+        self.echoStartTime = GetGameTimeMilliseconds()
+        self:Send({ ID = LUT.SYNC_REPLY, TX = 0, TY = 0, TZ = 0, RX = RX, RY = RY, RZ = RZ })
     end
 end
 
 ----------------------------------------------------------------------------------------------------
--- HANDLE BROADCAST DATA
+-- HANDLE SYNC DATA
 ----------------------------------------------------------------------------------------------------
-function Module:HandleSynchronization(unitTag, Data)
+function Module:HandleSyncData(unitTag, Data)
     if not CC.SV.enableAddon then return end
 
-    local currentTime = GetGameTimeMilliseconds()
-    local currentPing = nil
+    local isValidData = (Data.TX == Data.TY and Data.TY == Data.TZ)
+    if not isValidData then return end
 
     local isPlayer = AreUnitsEqual(unitTag, "player")
+    local currentPing = nil
     local isSenderRaidlead = (Data.RX == 1)
-
     local slayerEnc = Data.RY or 0
     local arkasisEnc = Data.RZ or 0
 
-    -- CALC PING
-    if self.isReceivingSync and self.startTime > 0 then
-        currentPing = (currentTime - self.startTime)
-        if not isPlayer then currentPing = currentPing / 2 end
+    if Data.ID == LUT.SYNC_REQUEST then self:StartSyncLoop() end
+
+    if isPlayer then
+        if self.isReceivingSync and self.requestStartTime > 0 then
+            currentPing = GetGameTimeMilliseconds() - self.requestStartTime
+
+            self:UpdateAddonUsers(unitTag, currentPing, isSenderRaidlead, slayerEnc, arkasisEnc)
+
+            if self.isManualRequest then
+                self:PrintReply(unitTag, currentPing, isSenderRaidlead, slayerEnc, arkasisEnc)
+            end
+        end
+
+        if Data.ID == LUT.SYNC_REPLY and self.echoStartTime and self.echoStartTime > 0 then
+            local echoPing = GetGameTimeMilliseconds() - self.echoStartTime
+            self.echoStartTime = 0
+            self:UpdateAddonUsers(unitTag, echoPing, isSenderRaidlead, slayerEnc, arkasisEnc)
+        end
+
+        return
     end
 
-    -- INCOMING REQUEST -> SEND REPLY
-    if Data.ID == LUT.STATUS_REQUEST and not isPlayer then
+    -- INCOMING REQUEST FROM GROUP
+    if Data.ID == LUT.SYNC_REQUEST then
+        self:DebugSync("HandleSyncData() Data.ID == LUT.SYNC_REQUEST")
+
+        -- SPAM ON DOORS / PORTS.. SOMEONE ELSE REQUESTED FIRST? BLOCK MY OWN
+        self.lastRequestTime = GetGameTimeMilliseconds()
+
         self:UpdateAddonUsers(unitTag, nil, isSenderRaidlead, slayerEnc, arkasisEnc)
+        self:SendSyncReply()
 
-        local playerZoneId = CC.GetCleanZoneId()
-        local slayerSide = CC.SlayerAssistant:GetSideIdFromZoneId(playerZoneId) or 0
-        local slayerSet  = CC.GetPlayerSetStatus("SLAYER")
+    -- INCOMING REPLY FROM GROUP
+    elseif Data.ID == LUT.SYNC_REPLY then
+        -- CALC PING OR NIL
+        if self.isReceivingSync and self.requestStartTime > 0 then
+            currentPing = (GetGameTimeMilliseconds() - self.requestStartTime) / 2
+        end
 
-        local arkasisSide = CC.ArkasisAssistant:GetSideIdFromZoneId(playerZoneId) or 0
-        local arkasisSet  = CC.GetPlayerSetStatus("ARKASIS")
-
-        local playerRX = CC.IsRaidlead() and 1 or 0
-        local playerRY = (slayerSide * 10) + slayerSet
-        local playerRZ = (arkasisSide * 10) + arkasisSet
-
-        self:Send({ ID = LUT.STATUS_REPLY, TX = 0, TY = 0, TZ = 0, RX = playerRX, RY = playerRY, RZ = playerRZ })
-    end
-
-    -- INCOMING REPLY OR SELF PING
-    if Data.ID == LUT.STATUS_REPLY or (Data.ID == LUT.STATUS_REQUEST and isPlayer) then
         self:UpdateAddonUsers(unitTag, currentPing, isSenderRaidlead, slayerEnc, arkasisEnc)
-        if self.isReceivingSync then
+
+        -- PRINT REPLY
+        if self.isReceivingSync and self.isManualRequest then
             self:PrintReply(unitTag, currentPing, isSenderRaidlead, slayerEnc, arkasisEnc)
         end
     end
@@ -128,14 +173,14 @@ end
 ----------------------------------------------------------------------------------------------------
 -- HANDLE VERSION CHECK
 ----------------------------------------------------------------------------------------------------
-function Module:HandleVersionCheck(unitTag, Data)
+function Module:HandleVersionData(unitTag, Data)
     if not CC.SV.enableAddon then return end
 
     local isPlayer = AreUnitsEqual(unitTag, "player")
 
     -- INCOMING REQUEST -> SEND REPLY
     if Data.ID == LUT.VERSION_REQUEST and not isPlayer then
-        self:Send({ ID = LUT.VERSION_REPLY, TX = 0, TY = 0, TZ = 0, RX = CC.ADDON or 0, RY = 0, RZ = 0 })
+        self:Send({ ID = LUT.VERSION_REPLY, TX = 0, TY = 0, TZ = 0, RX = CC.ADDONVERSION or 0, RY = 0, RZ = 0 })
     end
 
     -- INCOMING REPLY
@@ -230,11 +275,11 @@ function Module:OnData(unitTag, Data)
     end
 
     -- PING AND VERSION CHECK
-    if Data.ID == LUT.STATUS_REPLY or Data.ID == LUT.STATUS_REQUEST then
-        self:HandleSynchronization(unitTag, Data)
+    if Data.ID == LUT.SYNC_REPLY or Data.ID == LUT.SYNC_REQUEST then
+        self:HandleSyncData(unitTag, Data)
         return
     elseif Data.ID == LUT.VERSION_REPLY or Data.ID == LUT.VERSION_REQUEST then
-        self:HandleVersionCheck(unitTag, Data)
+        self:HandleVersionData(unitTag, Data)
         return
     end
 
@@ -249,7 +294,7 @@ function Module:OnData(unitTag, Data)
     end
 
     -- ROUTE TO MODULE
-    local BroadcastModule = self.BroadcastModules[Data.ID]
+    local BroadcastModule = self.Modules[Data.ID]
 
     if BroadcastModule and BroadcastModule.HandleBroadcast then
         BroadcastModule:HandleBroadcast(unitTag, Data)
@@ -325,6 +370,9 @@ function Module:UpdateAddonUsers(unitTag, currentPing, isRaidlead, slayerEnc, ar
     CC.UserData[displayName] = CC.UserData[displayName] or {}
     local User = CC.UserData[displayName]
 
+    -- WATCHDOG
+    User.lastSeen = GetGameTimeSeconds()
+
     if currentPing ~= nil and currentPing >= 0 then
         User.ping = currentPing
     end
@@ -367,15 +415,90 @@ function Module:UpdateAddonUsers(unitTag, currentPing, isRaidlead, slayerEnc, ar
 end
 
 ----------------------------------------------------------------------------------------------------
+-- WATCHDOG
+----------------------------------------------------------------------------------------------------
+function Module:CleanUpGhosts()
+    local currentTime = GetGameTimeSeconds()
+    local hasRemoved = false
+    local playerName = GetUnitDisplayName("player")
+
+    for displayName, User in pairs(CC.UserData) do
+        if displayName ~= playerName then
+            local lastSeen = User.lastSeen or currentTime
+
+            if (currentTime - lastSeen) > 180 then
+                local isStillInGroup = false
+                if IsUnitGrouped("player") then
+                    for i = 1, GetGroupSize() do
+                        if GetUnitDisplayName("group" .. i) == displayName then
+                            isStillInGroup = true
+                            break
+                        end
+                    end
+                end
+
+                if isStillInGroup then
+                    CC.Debug(string.format("Ghost removed: %s |cFF0000(Still in group! Outdated Addon?)|r", displayName))
+                else
+                    CC.Debug(string.format("Ghost removed: %s (Left group)", displayName))
+                end
+
+                CC.UserData[displayName] = nil
+                hasRemoved = true
+            end
+        else
+            User.lastSeen = currentTime
+        end
+    end
+
+    if hasRemoved then
+        CC.DisplayStatus:Update()
+        if CC.DisplayPanel.SV.isVisible then
+            CC.DisplayPanel:UpdateData()
+        end
+    end
+end
+
+----------------------------------------------------------------------------------------------------
+-- RING SYNC
+----------------------------------------------------------------------------------------------------
+function Module:StartSyncLoop()
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Broadcast_Sync_Initial")
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Broadcast_Sync_Loop")
+
+    if not IsUnitGrouped("player") then return end
+
+    -- INDIVIDUAL OFFSET.. GROUP INDEX * 5
+    local groupIndex = GetGroupIndexByUnitTag("player") or 1
+    local initialDelayMs = groupIndex * 5000
+
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Broadcast_Sync_Initial", initialDelayMs, function()
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Broadcast_Sync_Initial")
+        self:SendSyncReply()
+
+        EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Broadcast_Sync_Loop", 60000, function()
+            self:SendSyncReply()
+        end)
+    end)
+end
+
+----------------------------------------------------------------------------------------------------
 -- SEND REQUEST (PING GROUP)
 ----------------------------------------------------------------------------------------------------
-function Module:SendPingRequest(isManual)
+function Module:SendSyncRequest(isManualRequest, isForced)
+    if not isManualRequest then
+        local currentTime = GetGameTimeMilliseconds()
+        if not isForced and (currentTime - self.lastRequestTime) < 60000 then
+            return
+        end
+        self.lastRequestTime = currentTime
+    end
+
     if self.isReceivingSync then
-        if isManual then CC.Debug("Still receiving..") end
+        if isManualRequest then CC.Debug("Still receiving..") end
         return
     end
 
-    -- RESET TO ZE ZE ZE .. ZERO
     for _, User in pairs(CC.UserData) do
         User.ping = 0
     end
@@ -393,29 +516,37 @@ function Module:SendPingRequest(isManual)
 
     self:UpdateAddonUsers("player", 0, CC.IsRaidlead(), RY, RZ)
 
-    if not IsUnitGrouped("player") and not isManual then return end
+    if not IsUnitGrouped("player") then
+        if isManualRequest then
+            d(string.format("%s %s", CC.CHAT, CC.ColorString("Permission denied. Not in a group.", "RD")))
+        end
+        return
+    end
     if not self.Handler or not self.Handler:IsFinalized() then return end
 
-    self.startTime = GetGameTimeMilliseconds()
-    self.isReceivingSync = (isManual == true)
+    self.requestStartTime = GetGameTimeMilliseconds()
+    self.isReceivingSync = true
+    self.isManualRequest = (isManualRequest == true)
 
-    if isManual then
-        CC.Debug("Ping request sent. Receiving..")
-    end
+    if isManualRequest then CC.Debug("Ping request sent. Receiving..") end
 
-    local timerName = CC.NAME .. self.name .. "STATUS_REQUEST_TIMEOUT"
-    EVENT_MANAGER:UnregisterForUpdate(timerName)
-    EVENT_MANAGER:RegisterForUpdate(timerName, 5000, function()
-        EVENT_MANAGER:UnregisterForUpdate(timerName)
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Broadcast_Sync_Request_Timeout")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Broadcast_Sync_Request_Timeout", 5000, function()
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Broadcast_Sync_Request_Timeout")
         if self.isReceivingSync then
-            self.startTime = 0
+            self.requestStartTime = 0
             self.isReceivingSync = false
             CC.DisplayStatus:Update()
-            if isManual then CC.Debug("Ping request end!") end
+            if self.isManualRequest then CC.Debug("Ping request end!") end
         end
     end)
 
-    self:Send({ ID = LUT.STATUS_REQUEST, TX = 0, TY = 0, TZ = 0, RX = RX, RY = RY, RZ = RZ })
+    local strIsManualRequest, strIsForced = tostring(isManualRequest), tostring(isForced)
+    self:DebugSync(string.format("SendSyncRequest(%s, %s)", strIsManualRequest, strIsForced))
+    self:Send({ ID = LUT.SYNC_REQUEST, TX = 0, TY = 0, TZ = 0, RX = RX, RY = RY, RZ = RZ })
+
+    -- START RING
+    self:StartSyncLoop()
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -432,10 +563,10 @@ function Module:SendVersionRequest()
     -- SET OWN VERSION
     local playerName = GetUnitDisplayName("player")
     CC.UserData[playerName] = CC.UserData[playerName] or {}
-    CC.UserData[playerName].version = CC.ADDON or 0
+    CC.UserData[playerName].version = CC.ADDONVERSION or 0
 
     d(string.format("%s Version request sent.", CC.CHAT))
-    d(string.format("%s Your version: %04d", CC.CHAT, CC.ADDON or 0))
+    d(string.format("%s Your version: %04d", CC.CHAT, CC.ADDONVERSION or 0))
 
     if not IsUnitGrouped("player") then
         self.isReceivingVersion = false
@@ -444,10 +575,9 @@ function Module:SendVersionRequest()
 
     if not self.Handler or not self.Handler:IsFinalized() then return end
 
-    local timerName = CC.NAME .. self.name .. "VERSION_REQUEST_TIMEOUT"
-    EVENT_MANAGER:UnregisterForUpdate(timerName)
-    EVENT_MANAGER:RegisterForUpdate(timerName, 5000, function()
-        EVENT_MANAGER:UnregisterForUpdate(timerName)
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Broadcast_Version_Request_Timeout")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Broadcast_Version_Request_Timeout", 5000, function()
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Broadcast_Version_Request_Timeout")
         self.isReceivingVersion = false
     end)
 
@@ -509,14 +639,14 @@ function Module:PrintReply(unitTag, currentPing, isRaidlead, slayerEnc, arkasisE
         extraInfo = string.format(" - %s / %s", slayerStr, arkasisStr)
     end
 
-    d(string.format("%s Data received. Source: %s%s - Latency: %d ms%s", CC.CHAT, playerLink, leadText, ping, extraInfo))
+    d(string.format("%s Ping: %s%s (%d ms)%s", CC.CHAT, playerLink, leadText, ping, extraInfo))
 end
 
 ----------------------------------------------------------------------------------------------------
 -- REGISTER SLASH COMMANDS
 ----------------------------------------------------------------------------------------------------
 SLASH_COMMANDS["/cc_ping"] = function()
-    Module:SendPingRequest(true)
+    Module:SendSyncRequest(true, true)
 end
 
 SLASH_COMMANDS["/cc_version"] = function()
@@ -526,9 +656,9 @@ end
 SLASH_COMMANDS["/cc_debug_ondata"] = function()
     Module.SV.enableDebugOnData = not Module.SV.enableDebugOnData
     if Module.SV.enableDebugOnData then
-        d(CC.CHAT .. " |c00FF00Data debug enabled.|r")
+        d(CC.CHAT .. " |c00FF00Debug [OnData] enabled.|r")
     else
-        d(CC.CHAT .. " |cFF0000Data debug disabled.|r")
+        d(CC.CHAT .. " |cFF0000Debug [OnData] disabled.|r")
     end
 end
 

@@ -286,7 +286,7 @@ function Module:ClearAllLabels()
     ZO_ClearTable(self.LabelTimers)
     self.activeCounter = 0
 
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. self.name .. "OnUpdate")
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayLabel_OnUpdate")
     self.isUpdateLoop = false
 end
 
@@ -340,7 +340,7 @@ end
 function Module:StartUpdateLoop()
     self.isUpdateLoop = true
     self.timeUpdate = 100
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. self.name .. "OnUpdate", self.timeUpdate, function() self:OnUpdate() end)
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayLabel_OnUpdate", self.timeUpdate, function() self:OnUpdate() end)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -429,13 +429,13 @@ function Module:OnUpdate()
     end
 
     if activeTrackers == 0 then
-        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. self.name .. "OnUpdate")
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayLabel_OnUpdate")
         self.isUpdateLoop = false
     else
         local timeUpdate = isFastUpdate and 10 or 100
         if self.timeUpdate ~= timeUpdate then
             self.timeUpdate = timeUpdate
-            EVENT_MANAGER:RegisterForUpdate(CC.NAME .. self.name .. "OnUpdate", timeUpdate, function() self:OnUpdate() end)
+            EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayLabel_OnUpdate", timeUpdate, function() self:OnUpdate() end)
         end
     end
 end

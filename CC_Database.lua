@@ -162,8 +162,8 @@ CC.LUT = {
 
     -- 0 .. 15 BROADCAST PING FOR SYNC
     SYNC = {
-        STATUS_REPLY    = 0,
-        STATUS_REQUEST  = 1,
+        SYNC_REPLY    = 0,
+        SYNC_REQUEST  = 1,
         VERSION_REPLY   = 2,
         VERSION_REQUEST = 3,
     },
@@ -192,8 +192,8 @@ CC.LUT = {
         EXIT_INSTANCE  = 52,
         PORT_IN_PLEASE = 53,
         PORT_TO_LEADER = 54,
-        VOTE_START     = 55,
-        VOTE_REPLY     = 56,
+        VOTE_REPLY     = 55,
+        VOTE_REQUEST   = 56,
     },
 
     -- 64 .. 79 MODULE: SLAYER ASSISTANT

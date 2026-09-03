@@ -62,14 +62,14 @@ end
 function Module:StartSkillBlockerLoop()
     if not self.isUpdateLoop then
         self.isUpdateLoop = true
-        EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "HandleSkillBlocker", 100, function() self:HandleSkillBlocker() end)
+        EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "SkillBlocker_HandleSkillBlocker", 100, function() self:HandleSkillBlocker() end)
     end
 end
 
 function Module:StopSkillBlockerLoop()
     if self.isUpdateLoop then
         self.isUpdateLoop = false
-        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "HandleSkillBlocker")
+        EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "SkillBlocker_HandleSkillBlocker")
 
         if LibSkillBlocker then
             for abilityId, _ in pairs(self.BlockedSkills) do

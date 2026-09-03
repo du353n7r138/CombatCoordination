@@ -56,8 +56,6 @@ local Module = {
 
         activeBreakEndTimeStamp = 0,
         activeBreakTotalTimeSec = 0,
-
-        enableSound = true,
     },
     ---@type table|any
     SV = {},
@@ -165,7 +163,7 @@ end
 ----------------------------------------------------------------------------------------------------
 -- CUSTOM NOTIFICATION
 ----------------------------------------------------------------------------------------------------
-function Module:TriggerCustom(timeSec, line1, line2, playSound)
+function Module:TriggerCustom(timeSec, line1, line2)
     if not timeSec or timeSec <= 0 then
         self.customEndTime = 0
         self.customTotalTimeSec = 0
@@ -185,13 +183,8 @@ function Module:TriggerCustom(timeSec, line1, line2, playSound)
     self.LabelLine1:SetColor(unpack(self.SV.ColorLine1))
     self.LabelLine2:SetColor(unpack(self.SV.ColorLine2))
 
-    -- TODO: MAKE PLAYSOUND NOT A BOOL BUT FLEXIBLE TO ALSO TAKE A SOUNDS.STRING
-    if playSound and self.SV.enableSound then
-        CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, 2)
-    end
-
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Notification_UpdateLoop", 100, function() self:UpdateTick() end)
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop", 100, function() self:UpdateTick() end)
 
     self:UpdateTick()
 end
@@ -315,9 +308,7 @@ function Module:UpdateTick()
     ----------------------------------------------------------------------------------------------------
     elseif self.slayerEndTime > 0 then
         self.slayerEndTime = 0
-        -- if self.SV.enableSound then
-        --     CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, 2)
-        -- end
+
     ----------------------------------------------------------------------------------------------------
     -- ARKASIS
     ----------------------------------------------------------------------------------------------------
@@ -355,9 +346,6 @@ function Module:UpdateTick()
 
     elseif self.arkasisEndTime > 0 then
         self.arkasisEndTime = 0
-        -- if self.SV.enableSound then
-        --     CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, 2)
-        -- end
 
     ----------------------------------------------------------------------------------------------------
     -- PULL TIMER
@@ -391,9 +379,7 @@ function Module:UpdateTick()
         if self.pullTotalTimeSec > 3 then
             self.pullFinishedEndTime = currentTime + 1.0
 
-            if self.SV.enableSound then
-                CC.PlaySound(SOUNDS.DUEL_START, 1)
-            end
+            CC.PlaySound(SOUNDS.DUEL_START, 1)
             self:PlayAnimation(1.0, 1.5, 1.0)
 
             showLabel = true
@@ -475,7 +461,7 @@ function Module:UpdateTick()
         and self.pullEndTime == 0
         and self.pullFinishedEndTime < currentTime
         and self.wipeEndTime == 0 then
-            EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
+            EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
         end
     end
 end
@@ -546,12 +532,10 @@ function Module:TriggerWipe(timeSec)
     self.wipeEndTime = GetGameTimeSeconds() + timeSec
     self.lastTickSec = math.ceil(timeSec) + 1
 
-    if self.SV.enableSound then
-        CC.PlaySound(SOUNDS.DUEL_START, 1)
-    end
+    CC.PlaySound(SOUNDS.DUEL_START, 1)
 
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Notification_UpdateLoop", 100, function() self:UpdateTick() end)
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop", 100, function() self:UpdateTick() end)
 
     self:UpdateTick()
 end
@@ -575,12 +559,10 @@ function Module:TriggerPortIn(timeSec, zoneName)
     self.portInZoneName = zoneName or "Unknown Zone"
     self.lastTickSec = math.ceil(timeSec) + 1
 
-    if self.SV.enableSound then
-        CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, 2)
-    end
+    CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, 2)
 
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Notification_UpdateLoop", 100, function() self:UpdateTick() end)
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop", 100, function() self:UpdateTick() end)
 
     self:UpdateTick()
 end
@@ -608,11 +590,11 @@ function Module:TriggerSlayer(timeSec, sideId, targetName)
     self.slayerTargetName = targetName or ""
     self.lastTickSec = math.ceil(timeSec) + 1
 
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Notification_UpdateLoop", 100, function() self:UpdateTick() end)
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop", 100, function() self:UpdateTick() end)
 
-    if CC.SlayerAssistant.SV.enableSound then
-        CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, 2)
+    if CC.SlayerAssistant.SV.volumeNotification > 0 then
+        CC.PlaySound(CC.SlayerAssistant.SV.soundNotification, CC.SlayerAssistant.SV.volumeNotification)
     end
 
     self:UpdateTick()
@@ -639,11 +621,11 @@ function Module:TriggerArkasis(timeSec, sideId)
     self.arkasisSideId = sideId or 0
     self.lastTickSec = math.ceil(timeSec) + 1
 
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Notification_UpdateLoop", 100, function() self:UpdateTick() end)
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop", 100, function() self:UpdateTick() end)
 
-    if CC.ArkasisAssistant.SV.enableSound then
-        CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, 2)
+    if CC.ArkasisAssistant.SV.volumeNotification > 0 then
+        CC.PlaySound(CC.ArkasisAssistant.SV.soundNotification, CC.ArkasisAssistant.SV.volumeNotification)
     end
 
     self:UpdateTick()
@@ -670,8 +652,8 @@ function Module:TriggerPull(timeSec)
     self.pullTotalTimeSec = timeSec
     self.lastTickSec = math.ceil(timeSec) + 1
 
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Notification_UpdateLoop", 100, function() self:UpdateTick() end)
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop", 100, function() self:UpdateTick() end)
 
     self:UpdateTick()
 end
@@ -728,8 +710,8 @@ function Module:TriggerBreak(timeSec, sourceName, isRestore)
         self.breakTotalTimeSec = self.SV.activeBreakTotalTimeSec or timeSec
     end
 
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Notification_UpdateLoop", 100, function() self:UpdateTick() end)
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop", 100, function() self:UpdateTick() end)
 
     self:UpdateTick()
 end
@@ -777,7 +759,7 @@ function Module:Hide()
         self.Parent:SetHidden(true)
     end
 
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Notification_UpdateLoop")
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
 end
 
 ----------------------------------------------------------------------------------------------------

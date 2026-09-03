@@ -232,13 +232,13 @@ function Module:StartEffectTracking()
     if self.isEffectTracking then return end
     self.isEffectTracking = true
     self.timeUpdate = 100
-    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. self.name .. "OnUpdate", self.timeUpdate, function() self:OnUpdate() end)
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayEffect_OnUpdate", self.timeUpdate, function() self:OnUpdate() end)
 end
 
 function Module:StopEffectTracking()
     if not self.isEffectTracking then return end
     self.isEffectTracking = false
-    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. self.name .. "OnUpdate")
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayEffect_OnUpdate")
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -336,7 +336,7 @@ function Module:OnUpdate()
         local timeUpdate = isFastUpdate and 10 or 100
         if self.timeUpdate ~= timeUpdate then
             self.timeUpdate = timeUpdate
-            EVENT_MANAGER:RegisterForUpdate(CC.NAME .. self.name .. "OnUpdate", timeUpdate, function() self:OnUpdate() end)
+            EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayEffect_OnUpdate", timeUpdate, function() self:OnUpdate() end)
         end
     end
 end

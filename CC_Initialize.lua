@@ -10,6 +10,7 @@ function CC.Enable()
     EVENT_MANAGER:AddFilterForEvent(CC.NAME .. "EVENT_INVENTORY_SINGLE_SLOT_UPDATE", EVENT_INVENTORY_SINGLE_SLOT_UPDATE, REGISTER_FILTER_BAG_ID, BAG_WORN, REGISTER_FILTER_INVENTORY_UPDATE_REASON, INVENTORY_UPDATE_REASON_DEFAULT)
 
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_PLAYER_ACTIVATED", EVENT_PLAYER_ACTIVATED, function(...) CC.Events:OnPlayerActivated(...) end)
+    EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_PLAYER_COMBAT_STATE", EVENT_PLAYER_COMBAT_STATE, function(...) CC.Events:OnPlayerCombatState(...) end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_ACTION_SLOT_ABILITY_USED", EVENT_ACTION_SLOT_ABILITY_USED, function(...) CC.Events:OnActionSlotAbilityUsed(...) end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_ACTION_SLOTS_ALL_HOTBARS_UPDATED", EVENT_ACTION_SLOTS_ALL_HOTBARS_UPDATED, function() CC.SkillBlocker:UpdateEquippedSkills() end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_GROUP_MEMBER_JOINED", EVENT_GROUP_MEMBER_JOINED, function(...) CC.Events:OnGroupMemberJoined(...) end)
@@ -54,6 +55,7 @@ end
 function CC.Disable()
     EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_INVENTORY_SINGLE_SLOT_UPDATE", EVENT_INVENTORY_SINGLE_SLOT_UPDATE)
     EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_PLAYER_ACTIVATED", EVENT_PLAYER_ACTIVATED)
+    EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_PLAYER_COMBAT_STATE", EVENT_PLAYER_COMBAT_STATE)
     EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_ACTION_SLOT_ABILITY_USED", EVENT_ACTION_SLOT_ABILITY_USED)
     EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_ACTION_SLOTS_ALL_HOTBARS_UPDATED", EVENT_ACTION_SLOTS_ALL_HOTBARS_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_GROUP_MEMBER_JOINED", EVENT_GROUP_MEMBER_JOINED)
@@ -170,7 +172,7 @@ function CC.EnableAllModules()
                     CC.Broadcast.LutDataIn[broadcastId] = abilityId
                     CC.Broadcast.LutDataOut[abilityId] = broadcastId
                     if Module.HandleBroadcast then
-                        CC.Broadcast.BroadcastModules[abilityId] = Module
+                        CC.Broadcast.Modules[abilityId] = Module
                     end
                     if CC.SkillData[abilityId] then
                         CC.SkillData[abilityId].broadcastId = broadcastId
@@ -187,7 +189,7 @@ function CC.EnableAllModules()
                     end
                 else
                     if Module.HandleBroadcast then
-                        CC.Broadcast.BroadcastModules[broadcastId] = Module
+                        CC.Broadcast.Modules[broadcastId] = Module
                     end
                 end
             end
@@ -220,7 +222,7 @@ function CC.CreateChatButton()
 
     -- REGISTER BUTTOON
     CC.ChatButton = LibChatMenuButton.addChatButton(
-        CC.NAME .. "ChatButton", icon, tooltip,
+        CC.NAME .. "ChatMenuButton", icon, tooltip,
         function() CC.DisplayPanel:Toggle() end
     )
 end

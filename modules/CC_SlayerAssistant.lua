@@ -55,9 +55,6 @@ local Module = {
         ColorRight = { 0,    0.5,  1,    0.75 },
         ColorFlash = { 1,    1,    1,    0.75 },
 
-        --/script CombatCoordination.SlayerAssistant.SV.textureDome = "/textures/arc_32_clean.dds"
-        --/script CombatCoordination.SlayerAssistant.SV.width = 500
-        --/script CombatCoordination.SlayerAssistant.SV.height = 500
         textureDome = "/textures/arc_32_clean.dds",
         textureOutline = "/textures/circle_32_clean.dds",
         innerSizePercent = 60,
@@ -65,7 +62,9 @@ local Module = {
         durationMs = 5000,
         AssignmentByZone = {},
         enableAutoPrompt = true,
-        enableSound = true,
+
+        soundNotification = SOUNDS.ABILITY_ULTIMATE_READY,
+        volumeNotification = 2,
 
         enableDebug = false,
     },
@@ -184,9 +183,7 @@ function Module:AssignPlayerSide(sideId, targetZoneId, isSilent)
         self.SV.AssignmentByZone[zoneId] = sideId
         local activeZoneId = CC.GetCleanZoneId()
 
-        if zoneId == activeZoneId then
-            CC.Broadcast:BroadcastStatusUpdate()
-        end
+        if zoneId == activeZoneId then CC.Broadcast:SendSyncReply() end
 
         if not isSilent then
             local sideName = self:GetSideNameFromSideId(sideId)
@@ -507,7 +504,7 @@ function Module:DrawSlayerEffect(unitTag, sideId, customDurationMs)
 end
 
 ----------------------------------------------------------------------------------------------------
--- LATE EQUIP DRAWING CHECK (TRIGGERED BY BROADCAST)
+-- LATE EQUIP DRAWING CHECK
 ----------------------------------------------------------------------------------------------------
 function Module:CheckLateDraw(unitTag)
     local currentTime = GetGameTimeMilliseconds()
@@ -701,12 +698,6 @@ end
 -- CUSTOM ENABLE / DISABLE
 ----------------------------------------------------------------------------------------------------
 function Module:CustomEnable()
-    if IsUnitGrouped("player") then
-        zo_callLater(function()
-            CC.Broadcast:SendPingRequest(false)
-        end, 2500)
-    end
-
     -- YEAH YEAH I KNOW.. LIBCUSTOMMENU IS IN THE DEPENDENCIES. BUT I MIGHT CHANGE THAT.
     if LibCustomMenu then
         LibCustomMenu:RegisterGroupListContextMenu(function(Data) self:OnContextMenu(Data) end, LibCustomMenu.CATEGORY_LATE)
@@ -836,14 +827,6 @@ function Module:GetMenuOptions()
                 default = self.Default.visibilitySideOther,
                 disabled = function() return not CC.SV.enableAddon end,
             },
-            -- {
-            --     type = "checkbox",
-            --     name = "Enable Game AOE Color",
-            --     getFunc = function() return self.SV.enableGameAoeFriendlyColor end,
-            --     setFunc = function(value) self.SV.enableGameAoeFriendlyColor = value end,
-            --     default = self.Default.enableGameAoeFriendlyColor,
-            --     disabled = function() return not CC.SV.enableAddon end,
-            -- },
             {
                 type = "colorpicker",
                 name = "Color: Left",
@@ -880,19 +863,6 @@ function Module:GetMenuOptions()
                 default = self.Default.textureOutline,
                 disabled = function() return not CC.SV.enableAddon end,
             },
-            -- {
-            --     type = "slider",
-            --     name = "Inner Texture Size [%]",
-            --     tooltip = "Scales the inner letter relative to the outline.",
-            --     min = 50, max = 100, step = 2.5, decimals = 1,
-            --     getFunc = function() return self.SV.innerSizePercent end,
-            --     setFunc = function(value)
-            --         self.SV.innerSizePercent = value
-            --         UpdatePreview()
-            --     end,
-            --     default = self.Default.innerSizePercent,
-            --     disabled = function() return not CC.SV.enableAddon end,
-            -- },
             {
                 type = "custom",
                 createFunc = function(CustomControl)
@@ -911,6 +881,40 @@ function Module:GetMenuOptions()
                 end,
                 minHeight = 128,
                 width = "full",
+            },
+
+            ----------------------------------------------------------------------------------------------------
+            -- NOTIFICATION SOUND
+            ----------------------------------------------------------------------------------------------------
+            { type = "header", name = CC.ColorString("NOTIFICATION SOUND", "tier3") },
+            {
+                type = "dropdown",
+                name = "Notification Sound",
+                choices = CC.NOTIFICATION_SOUNDS_CHOICES,
+                choicesValues = CC.NOTIFICATION_SOUNDS_VALUES,
+                getFunc = function() return self.SV.soundNotification end,
+                setFunc = function(value)
+                    self.SV.soundNotification = value
+                    if self.SV.volumeNotification > 0 then
+                        CC.PlaySound(value, self.SV.volumeNotification)
+                    end
+                end,
+                default = self.Default.soundNotification,
+                disabled = function() return not CC.SV.enableAddon end,
+            },
+            {
+                type = "slider",
+                name = "Volume Notification 0 = OFF",
+                min = 0, max = 10, step = 1,
+                getFunc = function() return self.SV.volumeNotification end,
+                setFunc = function(value)
+                    self.SV.volumeNotification = value
+                    if value > 0 then
+                        CC.PlaySound(self.SV.soundNotification, value)
+                    end
+                end,
+                default = self.Default.volumeNotification,
+                disabled = function() return not CC.SV.enableAddon end,
             },
 
             ----------------------------------------------------------------------------------------------------
@@ -1007,14 +1011,6 @@ function Module:GetMenuOptions()
             },
             {
                 type = "divider",
-            },
-            {
-                type = "checkbox",
-                name = "Enable Notification Sound",
-                getFunc = function() return self.SV.enableSound end,
-                setFunc = function(value) self.SV.enableSound = value end,
-                default = self.Default.enableSound,
-                disabled = function() return not CC.SV.enableAddon end,
             },
             {
                 type = "checkbox",

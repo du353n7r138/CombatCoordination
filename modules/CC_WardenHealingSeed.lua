@@ -43,7 +43,8 @@ local Module = {
         ["Budding Seeds"] = { 85922, }, -- INSTANT BLOOM ID 85922
     },
     Default = {
-        timer = 0,
+        timerModeSelf = 0,
+        timerModeGroup = 0,
         enableDrawSelf = true,
         enableDrawGroup = false,
         enableGameAoeFriendlyColor = false,

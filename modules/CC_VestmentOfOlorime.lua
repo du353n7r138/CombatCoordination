@@ -26,12 +26,15 @@ local Module = {
         },
     },
     Default = {
-        timer = 2,
+        timerModeSelf = 2,
+        timerModeGroup = 2,
         enableDrawSelf = true,
         enableDrawGroup = true,
         enableGameAoeFriendlyColor = false,
 
         enableNotification = true,
+
+        soundNotification = SOUNDS.ABILITY_ULTIMATE_READY,
         volumeNotification = 0,
 
         ColorSelf = { 1, 0.75, 0, 0.75 },
@@ -61,7 +64,7 @@ function Module:PlayNotification()
     local line1, line2 = colorHex .. "OLORIME!|r", ""
 
     if self.SV.volumeNotification > 0 then
-        CC.PlaySound(SOUNDS.ABILITY_ULTIMATE_READY, self.SV.volumeNotification)
+        CC.PlaySound(self.SV.soundNotification, self.SV.volumeNotification)
     end
 
     CC.DisplayNotification:TriggerCustom(timeSec, line1, line2)
