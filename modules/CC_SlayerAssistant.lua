@@ -344,15 +344,19 @@ function Module:DrawSlayerEffect(unitTag, sideId, customDurationMs)
     end
 
     local isEquippedLate = customDurationMs and customDurationMs < self.SV.durationMs
+    local currentTime = GetGameTimeMilliseconds()
+    local displayName = GetUnitDisplayName(unitTag) or unitTag
+
+    local activeTrack = self.TrackedSlayers[displayName]
+    if activeTrack and activeTrack.endTime > currentTime and activeTrack.sideId == sideId then
+        return
+    end
 
     -- VALID DATA; REMOVE OLD
     self:RemoveSlayerEffect(unitTag, isEquippedLate)
     if sideId == self.SIDE_NONE then return end
 
-    local currentTime = GetGameTimeMilliseconds()
-
     local ID = LUT.SLAYER_TRIGGER
-    local displayName = GetUnitDisplayName(unitTag) or unitTag
     local trackingKey = "SlayerAssistant_" .. tostring(displayName)
 
     local durationMs = customDurationMs or self.SV.durationMs
@@ -500,7 +504,7 @@ function Module:DrawSlayerEffect(unitTag, sideId, customDurationMs)
     CC.DisplayEffect.EffectTimers[trackingKey .. "_Outline"] = { currentTime = currentTime, effectId = outlineId }
     CC.DisplayEffect.EffectTimers[trackingKey .. "_Inner"]   = { currentTime = currentTime, effectId = innerId }
 
-    self.TrackedSlayers[displayName] = { startTime = currentTime, endTime = currentTime + durationMs }
+    self.TrackedSlayers[displayName] = { startTime = currentTime, endTime = currentTime + durationMs, sideId = sideId }
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -512,11 +516,11 @@ function Module:CheckLateDraw(unitTag)
         local displayName = GetUnitDisplayName(unitTag)
         if not displayName then return end
 
-        local User = CC.UserData[displayName]
-        if User and User.SlayerAssistant then
-            local isEquipped = User.SlayerAssistant.isEquipped
-            local RY = User.SlayerAssistant.sideId
-            local targetZoneId = User.SlayerAssistant.zoneId
+        local GroupMember = CC.GroupData[displayName]
+        if GroupMember and GroupMember.SlayerAssistant then
+            local isEquipped = GroupMember.SlayerAssistant.isEquipped
+            local RY = GroupMember.SlayerAssistant.sideId
+            local targetZoneId = GroupMember.SlayerAssistant.zoneId
             local playerZoneId = CC.GetCleanZoneId()
 
             if isEquipped ~= self.SET_STATUS_NONE and targetZoneId == playerZoneId then
@@ -592,11 +596,11 @@ function Module:HandleBroadcast(unitTag, Data)
                             groupZoneId = playerZoneId
                         end
                     else
-                        if CC.UserData[groupDisplayName] and CC.UserData[groupDisplayName].SlayerAssistant then
+                        if CC.GroupData[groupDisplayName] and CC.GroupData[groupDisplayName].SlayerAssistant then
                             -- CHECK IF SET IS ACTUALLY EQUIPPED
-                            if CC.UserData[groupDisplayName].SlayerAssistant.isEquipped ~= self.SET_STATUS_NONE then
-                                groupSideId = CC.UserData[groupDisplayName].SlayerAssistant.sideId
-                                groupZoneId = CC.UserData[groupDisplayName].SlayerAssistant.zoneId
+                            if CC.GroupData[groupDisplayName].SlayerAssistant.isEquipped ~= self.SET_STATUS_NONE then
+                                groupSideId = CC.GroupData[groupDisplayName].SlayerAssistant.sideId
+                                groupZoneId = CC.GroupData[groupDisplayName].SlayerAssistant.zoneId
                             end
                         end
                     end
@@ -682,7 +686,7 @@ function Module:OnContextMenu(Data)
     if not unitTag then return end
 
     local menuIcon = string.format("|t%d:%d:/esoui/art/icons/ability_buff_major_slayer.dds|t ", CC.SIZE_ICON_LCM, CC.SIZE_ICON_LCM)
-    AddCustomSubMenuItem(menuIcon .. CC.ColorString("[CC] SlayerAssistant", "tier2"), {
+    AddCustomSubMenuItem(menuIcon .. CC.ColorString("[CC] Slayer Assistant", "tier2"), {
         {
             label = "Assign Side: Left",
             callback = function() self:SendTargetedAssignment(unitTag, self.SIDE_LEFT) end,
@@ -705,8 +709,8 @@ function Module:CustomEnable()
 end
 
 function Module:CustomDisable()
-    for _, User in pairs(CC.UserData) do
-        User.SlayerAssistant = nil
+    for _, GroupMember in pairs(CC.GroupData) do
+        GroupMember.SlayerAssistant = nil
     end
 end
 

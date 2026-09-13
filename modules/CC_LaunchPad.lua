@@ -229,7 +229,7 @@ function Module:FastTravelToWayshrine(targetNodeId)
     end
 
     d(string.format("%s Traveling to: |c7FFFFF[%s]|r", CC.CHAT, cleanName))
-    CC.DisplayNotification:TriggerCustom(2.0, string.format("FAST TRAVEL: [%s]", cleanName), "", false)
+    CC.DisplayNotification:TriggerCustom(2.0, string.format("FAST TRAVEL: [%s]", cleanName), "")
 
     zo_callLater(function()
         FastTravelToNode(targetNodeId)
@@ -259,7 +259,7 @@ function Module:FastTravelToTrial(targetZoneId)
             FastTravelToNode(targetNodeId)
         end, 1000)
         d(string.format("%s Traveling to: |c7FFFFF[%s]|r", CC.CHAT, trialName))
-        CC.DisplayNotification:TriggerCustom(2.0, string.format("FAST TRAVEL: [%s]", trialName), "", false)
+        CC.DisplayNotification:TriggerCustom(2.0, string.format("FAST TRAVEL: [%s]", trialName), "")
     else
         d(string.format("%s %s", CC.CHAT, CC.ColorString("Node for " .. trialName .. " is missing.", "RD")))
     end
@@ -691,7 +691,7 @@ function Module:GetMenuOptions()
     end
     table.sort(CategoryChoices)
 
-    for _, ids in pairs(CategoriesMap) do table.sort(ids) end
+    for _, Ids in pairs(CategoriesMap) do table.sort(Ids) end
     local function GetCategoryForTrigger(triggerId)
         local Data = self.TriggerData[triggerId]
         return Data and Data.category or CategoryChoices[1]

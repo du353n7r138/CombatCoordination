@@ -320,20 +320,35 @@ function Module:DrawArkasisEffect(unitTag, sideId, customDurationMs)
     local playerSideId = self:GetSideIdFromZoneId(zoneId)
     local isPlayerSide = (sideId == playerSideId)
 
-    if isPlayerSide then
-        if self.SV.visibilitySideSelf == self.VISIBILITY_HIDDEN then return end
-    else
-        if self.SV.visibilitySideOther == self.VISIBILITY_HIDDEN then return end
+    if playerSideId ~= self.SIDE_NONE then
+        if isPlayerSide then
+            -- DELAYED SYNC
+            if CC.DisplayNotification.arkasisEndTime > 0 then
+                CC.DisplayNotification.arkasisTargetName = GetUnitDisplayName(unitTag)
+                CC.DisplayNotification.arkasisSideId = sideId
+                CC.DisplayNotification:UpdateTick()
+            end
+
+            if self.SV.visibilitySideSelf == self.VISIBILITY_HIDDEN then return end
+        else
+            if self.SV.visibilitySideOther == self.VISIBILITY_HIDDEN then return end
+        end
     end
 
     local isEquippedLate = customDurationMs and customDurationMs < self.SV.durationMs
+    local currentTime = GetGameTimeMilliseconds()
+    local displayName = GetUnitDisplayName(unitTag) or unitTag
+
+    local activeTrack = self.TrackedArkasis[displayName]
+    if activeTrack and activeTrack.endTime > currentTime and activeTrack.sideId == sideId then
+        return
+    end
+
+    -- VALID DATA; REMOVE OLD
     self:RemoveArkasisEffect(unitTag, isEquippedLate)
     if sideId == self.SIDE_NONE then return end
 
-    local currentTime = GetGameTimeMilliseconds()
-
     local ID = LUT.ARKASIS_TRIGGER
-    local displayName = GetUnitDisplayName(unitTag) or unitTag
     local trackingKey = "ArkasisAssistant_" .. tostring(displayName)
 
     local durationMs = customDurationMs or self.SV.durationMs
@@ -437,7 +452,7 @@ function Module:DrawArkasisEffect(unitTag, sideId, customDurationMs)
     CC.DisplayEffect.EffectTimers[trackingKey .. "_Outline"] = { currentTime = currentTime, effectId = outlineId }
     CC.DisplayEffect.EffectTimers[trackingKey .. "_Inner"]   = { currentTime = currentTime, effectId = innerId }
 
-    self.TrackedArkasis[displayName] = { startTime = currentTime, endTime = currentTime + durationMs }
+    self.TrackedArkasis[displayName] = { startTime = currentTime, endTime = currentTime + durationMs, sideId = sideId }
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -449,11 +464,11 @@ function Module:CheckLateDraw(unitTag)
         local displayName = GetUnitDisplayName(unitTag)
         if not displayName then return end
 
-        local User = CC.UserData[displayName]
-        if User and User.ArkasisAssistant then
-            local isEquipped = User.ArkasisAssistant.isEquipped
-            local RY = User.ArkasisAssistant.sideId
-            local targetZoneId = User.ArkasisAssistant.zoneId
+        local GroupMember = CC.GroupData[displayName]
+        if GroupMember and GroupMember.ArkasisAssistant then
+            local isEquipped = GroupMember.ArkasisAssistant.isEquipped
+            local RY = GroupMember.ArkasisAssistant.sideId
+            local targetZoneId = GroupMember.ArkasisAssistant.zoneId
             local playerZoneId = CC.GetCleanZoneId()
 
             if isEquipped ~= self.SET_STATUS_NONE and targetZoneId == playerZoneId then
@@ -525,10 +540,10 @@ function Module:HandleBroadcast(unitTag, Data)
                             groupZoneId = playerZoneId
                         end
                     else
-                        if CC.UserData[groupDisplayName] and CC.UserData[groupDisplayName].ArkasisAssistant then
-                            if CC.UserData[groupDisplayName].ArkasisAssistant.isEquipped ~= self.SET_STATUS_NONE then
-                                groupSideId = CC.UserData[groupDisplayName].ArkasisAssistant.sideId
-                                groupZoneId = CC.UserData[groupDisplayName].ArkasisAssistant.zoneId
+                        if CC.GroupData[groupDisplayName] and CC.GroupData[groupDisplayName].ArkasisAssistant then
+                            if CC.GroupData[groupDisplayName].ArkasisAssistant.isEquipped ~= self.SET_STATUS_NONE then
+                                groupSideId = CC.GroupData[groupDisplayName].ArkasisAssistant.sideId
+                                groupZoneId = CC.GroupData[groupDisplayName].ArkasisAssistant.zoneId
                             end
                         end
                     end
@@ -611,7 +626,7 @@ function Module:OnContextMenu(Data)
     if not unitTag then return end
 
     local menuIcon = string.format("|t%d:%d:/esoui/art/icons/consumable_potion_012_type_002.dds|t ", CC.SIZE_ICON_LCM, CC.SIZE_ICON_LCM)
-    AddCustomSubMenuItem(menuIcon .. CC.ColorString("[CC] ArkasisAssistant", "tier2"), {
+    AddCustomSubMenuItem(menuIcon .. CC.ColorString("[CC] Arkasis Assistant", "tier2"), {
         {
             label = "Assign Stack: 1",
             callback = function() self:SendTargetedAssignment(unitTag, self.SIDE_1) end,
@@ -638,8 +653,8 @@ function Module:CustomEnable()
 end
 
 function Module:CustomDisable()
-    for _, User in pairs(CC.UserData) do
-        User.ArkasisAssistant = nil
+    for _, GroupMember in pairs(CC.GroupData) do
+        GroupMember.ArkasisAssistant = nil
     end
 end
 

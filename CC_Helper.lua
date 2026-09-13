@@ -27,13 +27,27 @@ end
 ----------------------------------------------------------------------------------------------------
 function CC.Debug(msg)
     if CC.SV.enableDebug then
-        d(CC.CHAT .. " " .. msg)
+        d("|cFF7F00[CC Debug] " .. msg)
     end
 end
 
 SLASH_COMMANDS["/cc_debug"] = function()
     CC.SV.enableDebug = not CC.SV.enableDebug
     d(CC.CHAT .. (CC.SV.enableDebug and " |c00FF00Debug [Miscellaneous] enabled.|r" or " |cFF0000Debug [Miscellaneous] disabled.|r"))
+end
+
+----------------------------------------------------------------------------------------------------
+-- DEBUG
+----------------------------------------------------------------------------------------------------
+SLASH_COMMANDS["/cc_getplayerbuffs"] = function()
+    local numBuffs = GetNumBuffs("player")
+    for i = 1, numBuffs do
+        local buffName, _, _, _, _, _, _, _, _, _, abilityId = GetUnitBuffInfo("player", i)
+        d(string.format("[%d] %s", abilityId, zo_strformat("<<1>>", buffName)))
+        if abilityId == 163359 then
+            d("|cFF0000SPAULDER TRUE|r")
+        end
+    end
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -65,6 +79,12 @@ end
 -- GET EQUIPPED SET STATUS
 ----------------------------------------------------------------------------------------------------
 function CC.GetPlayerSetStatus(setType)
+    if setType == "SPAULDER" then
+        local itemLink = GetItemLink(BAG_WORN, EQUIP_SLOT_SHOULDERS)
+        local itemId = GetItemLinkItemId(itemLink)
+        return (itemId == 181695) and 1 or 0
+    end
+
     local sets = {}
     if setType == "SLAYER" then
         sets = { [331] = 1, [332] = 2, [346] = 3 } -- WM, MA, ROJO

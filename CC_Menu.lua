@@ -416,6 +416,32 @@ function CC.CreateSettings()
                 ----------------------------------------------------------------------------------------------------
                 { type = "header", name = CC.ColorString("PANEL WINDOW", "tier3") },
                 {
+                    type = "dropdown",
+                    name = "Panel Font Style",
+                    choices = CC.FONT_STYLE_CHOICES,
+                    choicesValues = CC.FONT_STYLE_VALUES,
+                    getFunc = function() return CC.DisplayPanel.SV.fontStyle end,
+                    setFunc = function(value)
+                        CC.DisplayPanel.SV.fontStyle = value
+                        CC.DisplayPanel:ApplyFonts()
+                    end,
+                    default = CC.DisplayPanel.Default.fontStyle,
+                    disabled = function() return not CC.SV.enableAddon end,
+                },
+                {
+                    type = "dropdown",
+                    name = "Panel Font Weight",
+                    choices = CC.FONT_WEIGHT_CHOICES,
+                    choicesValues = CC.FONT_WEIGHT_VALUES,
+                    getFunc = function() return CC.DisplayPanel.SV.fontWeight end,
+                    setFunc = function(value)
+                        CC.DisplayPanel.SV.fontWeight = value
+                        CC.DisplayPanel:ApplyFonts()
+                    end,
+                    default = CC.DisplayPanel.Default.fontWeight,
+                    disabled = function() return not CC.SV.enableAddon end,
+                },
+                {
                     type = "slider",
                     name = "Panel Scale [%]",
                     tooltip = "Overall size of the panel.",
@@ -817,22 +843,6 @@ function CC.CreateSettings()
                 getFunc = function() return CC.Events.SV.enableDebugOnActionSlotAbilityUsed end,
                 setFunc = function(value) CC.Events.SV.enableDebugOnActionSlotAbilityUsed = value end,
                 default = CC.Events.Default.enableDebugOnActionSlotAbilityUsed,
-                disabled = function() return not CC.SV.enableAddon end,
-            },
-            {
-                type = "checkbox",
-                name = "Enable: Combat Event [/cc_debug_combatevent]",
-                getFunc = function() return CC.Events.SV.enableDebugOnCombatEvent end,
-                setFunc = function(value) CC.Events.SV.enableDebugOnCombatEvent = value end,
-                default = CC.Events.Default.enableDebugOnCombatEvent,
-                disabled = function() return not CC.SV.enableAddon end,
-            },
-            {
-                type = "checkbox",
-                name = "Enable: Cache UnitNames [/cc_debug_cache]",
-                getFunc = function() return CC.Events.SV.enableDebugCacheUnitNames end,
-                setFunc = function(value) CC.Events.SV.enableDebugCacheUnitNames = value end,
-                default = CC.Events.Default.enableDebugCacheUnitNames,
                 disabled = function() return not CC.SV.enableAddon end,
             },
             {

@@ -158,19 +158,42 @@ end
 -- COMBAT EVENT
 ----------------------------------------------------------------------------------------------------
 function Module:HandleCombatEvent(eventCode, result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
-    if sourceType == COMBAT_UNIT_TYPE_PLAYER and result == ACTION_RESULT_EFFECT_GAINED then
+    if result == ACTION_RESULT_EFFECT_GAINED then
         local ID = abilityId
         local SkillData = CC.SkillData[ID]
         if not SkillData then return end
 
         self:StartChannel(ID, SkillData)
-
-    elseif targetType == COMBAT_UNIT_TYPE_PLAYER and result == ACTION_RESULT_EFFECT_FADED then
+    elseif result == ACTION_RESULT_EFFECT_FADED then
         self:StopChannel()
     end
 end
 
--- CUSTOM COMBAT EVENT
+----------------------------------------------------------------------------------------------------
+-- ENABLE / DISABLE
+----------------------------------------------------------------------------------------------------
+function Module:CustomEnable()
+    for abilityName, AbilityIds in pairs(self.Skills) do
+        for _, abilityId in ipairs(AbilityIds) do
+            EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_COMBAT_EVENT" .. tostring(abilityId), EVENT_COMBAT_EVENT)
+
+            local eventName = CC.NAME .. "ArcanistFatecarver" .. "EVENT_COMBAT_EVENT" .. tostring(abilityId)
+            EVENT_MANAGER:RegisterForEvent(eventName, EVENT_COMBAT_EVENT, function(...) self:HandleCombatEvent(...) end)
+            EVENT_MANAGER:AddFilterForEvent(eventName, EVENT_COMBAT_EVENT, REGISTER_FILTER_ABILITY_ID, abilityId, REGISTER_FILTER_TARGET_COMBAT_UNIT_TYPE, COMBAT_UNIT_TYPE_PLAYER)
+        end
+    end
+end
+
+function Module:CustomDisable()
+    for abilityName, AbilityIds in pairs(self.Skills) do
+        for _, abilityId in ipairs(AbilityIds) do
+            local eventName = CC.NAME .. "ArcanistFatecarver" .. "EVENT_COMBAT_EVENT" .. tostring(abilityId)
+            EVENT_MANAGER:UnregisterForEvent(eventName, EVENT_COMBAT_EVENT)
+        end
+    end
+    self:StopChannel()
+end
+
 Module.GetMenuOptions = function(self) return CC.CreateModuleSettings(self, self.menuName, self.iconPath) end
 
 CC[Module.name] = Module

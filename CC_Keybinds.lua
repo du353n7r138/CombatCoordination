@@ -11,8 +11,9 @@ CC.Keybinds = {
 }
 
 ----------------------------------------------------------------------------------------------------
--- GENERAL
+-- KEYBINDS (ALPHABETICAL)
 ----------------------------------------------------------------------------------------------------
+
 ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_ADDONMENU_TOGGLE", "Addon Menu: Open / Close")
 function CC.Keybinds.AddonMenuToggle()
     if CC.Menu.PanelName and LAM2 then
@@ -24,20 +25,26 @@ function CC.Keybinds.AddonMenuToggle()
     end
 end
 
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_ARKASISASSISTANT_TOGGLE", "Arkasis Assistant: Toggle")
+function CC.Keybinds.ArkasisAssistantToggle()
+    if not CC.SV.enableAddon then return end
+    CC.ArkasisAssistant:ArkasisTrigger(true)
+end
+
 ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_DISPLAYPANEL_TOGGLE", "Display Panel: Open / Close")
 function CC.Keybinds.DisplayPanelToggle()
     if not CC.SV.enableAddon then return end
     CC.DisplayPanel:Toggle()
 end
 
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_DEBUGCOMBATEVENT_TOGGLE", "Debug Combat Event: Toggle")
-function CC.Keybinds.DebugCombatEventToggle()
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_POINTER_TOGGLE", "Draw Pointer: Place / Cancel")
+function CC.Keybinds.PointerToggle()
     if not CC.SV.enableAddon then return end
-    CC.Events:ToggleDebugCombatEvent()
+    CC.Pointer:ToggleAimMode()
 end
 
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PORT_PRIMARY_HOUSE", "Port into Primary Residence")
-function CC.Keybinds.PortPrimaryHouse()
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_FAST_TRAVEL_PRIMARY", "Fast Travel: Primary Residence")
+function CC.Keybinds.FastTravelPrimary()
     if not CC.SV.enableAddon then return end
     local houseId = GetHousingPrimaryHouse()
 
@@ -56,25 +63,16 @@ function CC.Keybinds.PortPrimaryHouse()
     end
 end
 
-----------------------------------------------------------------------------------------------------
--- RAIDLEAD TOOLS
-----------------------------------------------------------------------------------------------------
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_RESET_INSTANCE", "Reset Instance")
-function CC.Keybinds.ResetInstance()
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PATHTRACKING_TOGGLE", "PathTracking: Toggle CT")
+function CC.Keybinds.PathTrackingToggle()
     if not CC.SV.enableAddon then return end
-    CC.RaidleadTools:ResetInstance()
+    CC.PathTracking:ToggleCurrentTarget()
 end
 
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_WIPE_PLEASE", "Request: Wipe Please")
-function CC.Keybinds.WipePlease()
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PATHTRACKING_STOPALL", "PathTracking: Stop All")
+function CC.Keybinds.PathTrackingStopAll()
     if not CC.SV.enableAddon then return end
-    CC.RaidleadTools:RequestWipe()
-end
-
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PORT_IN_PLEASE", "Request: Port In Please")
-function CC.Keybinds.PortInPlease()
-    if not CC.SV.enableAddon then return end
-    CC.RaidleadTools:RequestPortIn()
+    CC.PathTracking:StopAll()
 end
 
 ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_EXITINSTANCE_REQUEST", "Request: P-T-E")
@@ -83,10 +81,56 @@ function CC.Keybinds.RequestExitInstance()
     CC.RaidleadTools:RequestExitInstance()
 end
 
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PULLTIMER_CUSTOM", "Timer: Pull Custom")
-function CC.Keybinds.PullTimerCustom()
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PORT_IN_PLEASE", "Request: Port In Please")
+function CC.Keybinds.PortInPlease()
     if not CC.SV.enableAddon then return end
-    CC.RaidleadTools:RequestPull(CC.RaidleadTools.SV.pullSeconds)
+    CC.RaidleadTools:RequestPortIn()
+end
+
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_WIPE_PLEASE", "Request: Wipe Please")
+function CC.Keybinds.WipePlease()
+    if not CC.SV.enableAddon then return end
+    CC.RaidleadTools:RequestWipe()
+end
+
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_RESET_INSTANCE", "Reset Instance")
+function CC.Keybinds.ResetInstance()
+    if not CC.SV.enableAddon then return end
+    CC.RaidleadTools:ResetInstance()
+end
+
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_SLAYERASSISTANT_TOGGLE", "Slayer Assistant: Toggle")
+function CC.Keybinds.SlayerAssistantToggle()
+    if not CC.SV.enableAddon then return end
+    CC.SlayerAssistant:SlayerTrigger(true)
+end
+
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_SPAULDER_TOGGLE", "Spaulder: Stack & Save")
+function CC.Keybinds.SpaulderToggle()
+    if not CC.SV.enableAddon then return end
+    CC.SpaulderOfRuin:SpaulderTrigger(true)
+end
+
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_SPAULDER_REINVITE", "Spaulder: Reinvite")
+function CC.Keybinds.SpaulderReinvite()
+    if not CC.SV.enableAddon then return end
+    CC.SpaulderOfRuin:Reinvite()
+end
+
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_SPAULDER_KICK_REINVITE", "Spaulder: Kick & Reinvite")
+function CC.Keybinds.SpaulderKickReinvite()
+    if not CC.SV.enableAddon then return end
+    CC.SpaulderOfRuin:KickAndReinvite()
+end
+
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_BREAKTIMER_TOGGLE", "Timer: Break Start / Stop")
+function CC.Keybinds.BreakTimerToggle()
+    if not CC.SV.enableAddon or not CC.IsRaidlead() then return end
+    if CC.DisplayNotification.breakEndTime > GetGameTimeSeconds() then
+        CC.RaidleadTools:RequestBreak(0)
+    else
+        CC.RaidleadTools:RequestBreak(CC.RaidleadTools.SV.breakMinutes)
+    end
 end
 
 ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PULLTIMER_TRASH", "Timer: Pull Trash (3 sec)")
@@ -107,48 +151,8 @@ function CC.Keybinds.PullTimerPrebuff()
     CC.RaidleadTools:RequestPull(10)
 end
 
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_BREAKTIMER_TOGGLE", "Timer: Break Start / Stop")
-function CC.Keybinds.BreakTimerToggle()
-    if not CC.SV.enableAddon or not CC.IsRaidlead() then return end
-    if CC.DisplayNotification.breakEndTime > GetGameTimeSeconds() then
-        CC.RaidleadTools:RequestBreak(0)
-    else
-        CC.RaidleadTools:RequestBreak(CC.RaidleadTools.SV.breakMinutes)
-    end
-end
-
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_SLAYERASSISTANT_TOGGLE", "Slayer Assistant: Toggle")
-function CC.Keybinds.SlayerAssistantToggle()
+ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PULLTIMER_CUSTOM", "Timer: Pull Custom")
+function CC.Keybinds.PullTimerCustom()
     if not CC.SV.enableAddon then return end
-    CC.SlayerAssistant:SlayerTrigger(true)
-end
-
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_ARKASISASSISTANT_TOGGLE", "Arkasis Assistant: Toggle")
-function CC.Keybinds.ArkasisAssistantToggle()
-    if not CC.SV.enableAddon then return end
-    CC.ArkasisAssistant:ArkasisTrigger(true)
-end
-
-----------------------------------------------------------------------------------------------------
--- DRAWING & MARKERS
-----------------------------------------------------------------------------------------------------
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_POINTER_TOGGLE", "Draw Pointer: Place / Cancel")
-function CC.Keybinds.PointerToggle()
-    if not CC.SV.enableAddon then return end
-    CC.Pointer:ToggleAimMode()
-end
-
-----------------------------------------------------------------------------------------------------
--- PATH TRACKING
-----------------------------------------------------------------------------------------------------
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PATHTRACKING_TOGGLE", "PathTracking: Toggle Target")
-function CC.Keybinds.PathTrackingToggle()
-    if not CC.SV.enableAddon then return end
-    CC.PathTracking:ToggleCurrentTarget()
-end
-
-ZO_CreateStringId("SI_BINDING_NAME_COMBATCOORDINATION_PATHTRACKING_STOPALL", "PathTracking: Stop All")
-function CC.Keybinds.PathTrackingStopAll()
-    if not CC.SV.enableAddon then return end
-    CC.PathTracking:StopAll()
+    CC.RaidleadTools:RequestPull(CC.RaidleadTools.SV.pullSeconds)
 end

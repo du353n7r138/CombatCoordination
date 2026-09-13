@@ -188,8 +188,10 @@ function Module:HandleVersionData(unitTag, Data)
         local displayName = GetUnitDisplayName(unitTag)
         if not displayName or displayName == "" then return end
 
-        CC.UserData[displayName] = CC.UserData[displayName] or {}
-        CC.UserData[displayName].version = Data.RX or 0
+        CC.GroupData[displayName] = CC.GroupData[displayName] or {}
+        CC.GroupData[displayName].version = Data.RX or 0
+        CC.GroupData[displayName].isAddonUser = true
+        CC.GroupData[displayName].lastSeen = GetGameTimeSeconds()
 
         if self.isReceivingVersion then
             local playerLink = CC.GetPlayerLinkFromDisplayName(displayName) or displayName
@@ -367,18 +369,19 @@ function Module:UpdateAddonUsers(unitTag, currentPing, isRaidlead, slayerEnc, ar
     local displayName = GetUnitDisplayName(unitTag)
     if not displayName or displayName == "" then return end
 
-    CC.UserData[displayName] = CC.UserData[displayName] or {}
-    local User = CC.UserData[displayName]
+    CC.GroupData[displayName] = CC.GroupData[displayName] or {}
+    local GroupMember = CC.GroupData[displayName]
 
-    -- WATCHDOG
-    User.lastSeen = GetGameTimeSeconds()
+    -- ADDON FLAG AND WATCHDOG
+    GroupMember.isAddonUser = true
+    GroupMember.lastSeen = GetGameTimeSeconds()
 
     if currentPing ~= nil and currentPing >= 0 then
-        User.ping = currentPing
+        GroupMember.pingMs = currentPing
     end
 
     if isRaidlead ~= nil then
-        User.isRaidlead = isRaidlead
+        GroupMember.isRaidlead = isRaidlead
     end
 
     local targetZoneId = CC.GetCleanZoneId(GetUnitRawWorldPosition(unitTag))
@@ -387,20 +390,20 @@ function Module:UpdateAddonUsers(unitTag, currentPing, isRaidlead, slayerEnc, ar
     if slayerEnc then
         local sideId = math.floor(slayerEnc / 10)
         local setId = slayerEnc % 10
-        User.SlayerAssistant = User.SlayerAssistant or {}
-        User.SlayerAssistant.sideId = sideId
-        User.SlayerAssistant.isEquipped = setId
-        User.SlayerAssistant.zoneId = targetZoneId
+        GroupMember.SlayerAssistant = GroupMember.SlayerAssistant or {}
+        GroupMember.SlayerAssistant.sideId = sideId
+        GroupMember.SlayerAssistant.isEquipped = setId
+        GroupMember.SlayerAssistant.zoneId = targetZoneId
     end
 
     -- DECODE ARKASIS
     if arkasisEnc then
         local sideId = math.floor(arkasisEnc / 10)
         local setId = arkasisEnc % 10
-        User.ArkasisAssistant = User.ArkasisAssistant or {}
-        User.ArkasisAssistant.sideId = sideId
-        User.ArkasisAssistant.isEquipped = setId
-        User.ArkasisAssistant.zoneId = targetZoneId
+        GroupMember.ArkasisAssistant = GroupMember.ArkasisAssistant or {}
+        GroupMember.ArkasisAssistant.sideId = sideId
+        GroupMember.ArkasisAssistant.isEquipped = setId
+        GroupMember.ArkasisAssistant.zoneId = targetZoneId
     end
 
     CC.DisplayStatus:Update()
@@ -422,9 +425,9 @@ function Module:CleanUpGhosts()
     local hasRemoved = false
     local playerName = GetUnitDisplayName("player")
 
-    for displayName, User in pairs(CC.UserData) do
+    for displayName, GroupMember in pairs(CC.GroupData) do
         if displayName ~= playerName then
-            local lastSeen = User.lastSeen or currentTime
+            local lastSeen = GroupMember.lastSeen or currentTime
 
             if (currentTime - lastSeen) > 180 then
                 local isStillInGroup = false
@@ -438,16 +441,24 @@ function Module:CleanUpGhosts()
                 end
 
                 if isStillInGroup then
-                    CC.Debug(string.format("Ghost removed: %s |cFF0000(Still in group! Outdated Addon?)|r", displayName))
+                    -- NO ADDON PINGS
+                    GroupMember.isAddonUser = false
+                    GroupMember.pingMs = nil
+                    GroupMember.version = nil
+                    GroupMember.isRaidlead = nil
+                    GroupMember.SlayerAssistant = nil
+                    GroupMember.ArkasisAssistant = nil
+                    GroupMember.lastSeen = currentTime
+                    hasRemoved = true
                 else
-                    CC.Debug(string.format("Ghost removed: %s (Left group)", displayName))
+                    CC.Debug(string.format("Ghost removed: %s", displayName))
+                    CC.GroupData[displayName] = nil
+                    hasRemoved = true
                 end
-
-                CC.UserData[displayName] = nil
-                hasRemoved = true
             end
         else
-            User.lastSeen = currentTime
+            GroupMember.isAddonUser = true
+            GroupMember.lastSeen = currentTime
         end
     end
 
@@ -499,8 +510,8 @@ function Module:SendSyncRequest(isManualRequest, isForced)
         return
     end
 
-    for _, User in pairs(CC.UserData) do
-        User.ping = 0
+    for _, GroupMember in pairs(CC.GroupData) do
+        GroupMember.pingMs = 0
     end
 
     local playerZoneId = CC.GetCleanZoneId()
@@ -556,14 +567,15 @@ function Module:SendVersionRequest()
     self.isReceivingVersion = true
 
     -- RESET VERSIONS
-    for _, User in pairs(CC.UserData) do
-        User.version = 0
+    for _, GroupMember in pairs(CC.GroupData) do
+        GroupMember.version = 0
     end
 
     -- SET OWN VERSION
     local playerName = GetUnitDisplayName("player")
-    CC.UserData[playerName] = CC.UserData[playerName] or {}
-    CC.UserData[playerName].version = CC.ADDONVERSION or 0
+    CC.GroupData[playerName] = CC.GroupData[playerName] or {}
+    CC.GroupData[playerName].version = CC.ADDONVERSION or 0
+    CC.GroupData[playerName].isAddonUser = true
 
     d(string.format("%s Version request sent.", CC.CHAT))
     d(string.format("%s Your version: %04d", CC.CHAT, CC.ADDONVERSION or 0))
@@ -594,7 +606,7 @@ function Module:PrintReply(unitTag, currentPing, isRaidlead, slayerEnc, arkasisE
     local displayName = GetUnitDisplayName(unitTag)
     local playerLink = CC.GetPlayerLinkFromDisplayName(displayName) or displayName
     local leadText = isRaidlead and " |cFFDF00RL|r" or ""
-    local ping = (currentPing and currentPing >= 0) and math.floor(currentPing) or 0
+    local pingMs = (currentPing and currentPing >= 0) and math.floor(currentPing) or 0
 
     local extraInfo = ""
         local slayerStr = ""
@@ -639,7 +651,7 @@ function Module:PrintReply(unitTag, currentPing, isRaidlead, slayerEnc, arkasisE
         extraInfo = string.format(" - %s / %s", slayerStr, arkasisStr)
     end
 
-    d(string.format("%s Ping: %s%s (%d ms)%s", CC.CHAT, playerLink, leadText, ping, extraInfo))
+    d(string.format("%s Ping: %s%s (%d ms)%s", CC.CHAT, playerLink, leadText, pingMs, extraInfo))
 end
 
 ----------------------------------------------------------------------------------------------------

@@ -16,11 +16,11 @@ local Module = {
     offlineLeaderName = nil,
     offlineLeaderTime = 0,
 
+    lastZoneId = 0,
+
     Default = {
         enableAutoPromote = true,
-        enableDebugOnCombatEvent = false,
         enableDebugOnActionSlotAbilityUsed = false,
-        enableDebugCacheUnitNames = false,
     },
     ---@type table|any
     SV = {},
@@ -36,6 +36,43 @@ CC.LastCast = {
 }
 
 ----------------------------------------------------------------------------------------------------
+-- USER DATA LOOP
+----------------------------------------------------------------------------------------------------
+function Module:UpdateGroupDataLoop()
+    if not IsUnitGrouped("player") then return end
+    local playerZoneId, playerX, playerY, playerZ = GetUnitRawWorldPosition("player")
+
+    for i = 1, GetGroupSize() do
+        local unitTag = "group" .. i
+        local displayName = GetUnitDisplayName(unitTag)
+
+        if displayName and displayName ~= "" then
+            CC.GroupData[displayName] = CC.GroupData[displayName] or {}
+            local GroupMember = CC.GroupData[displayName]
+
+            GroupMember.unitTag = unitTag
+            GroupMember.isOnline = IsUnitOnline(unitTag)
+
+            if GroupMember.selectedRole == nil then
+                GroupMember.selectedRole = GetGroupMemberSelectedRole(unitTag)
+            end
+
+            if GroupMember.isOnline and playerZoneId and playerX and playerY and playerZ then
+                local targetZoneId, targetX, targetY, targetZ = GetUnitRawWorldPosition(unitTag)
+                if targetZoneId == playerZoneId and targetX and targetY and targetZ then
+                    local distanceCentimeter = math.sqrt((playerX - targetX)^2 + (playerY - targetY)^2 + (playerZ - targetZ)^2)
+                    GroupMember.distance = distanceCentimeter / 100
+                else
+                    GroupMember.distance = 9999 -- NOT SAME ZONE
+                end
+            else
+                GroupMember.distance = 9999 -- OFFLINE
+            end
+        end
+    end
+end
+
+----------------------------------------------------------------------------------------------------
 -- UPDATE TRACKED LEADER
 ----------------------------------------------------------------------------------------------------
 function Module:UpdateTrackedLeader()
@@ -49,6 +86,21 @@ function Module:UpdateTrackedLeader()
         self.offlineLeaderName = nil
         self.offlineLeaderTime = 0
     end
+end
+
+----------------------------------------------------------------------------------------------------
+-- ON GROUP MEMBER ROLE CHANGED
+----------------------------------------------------------------------------------------------------
+function Module:OnGroupMemberRoleChanged(eventCode, unitTag, assignedRole)
+    if not IsUnitGrouped("player") then return end
+
+    local displayName = GetUnitDisplayName(unitTag)
+    if not displayName or displayName == "" then return end
+
+    CC.GroupData[displayName] = CC.GroupData[displayName] or {}
+    CC.GroupData[displayName].selectedRole = assignedRole
+
+    if CC.DisplayPanel.SV.isVisible then CC.DisplayPanel:UpdateData() end
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -143,9 +195,9 @@ function Module:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLoca
     if GetGroupSize() <= 1 then
         -- KEEP MYSELF
         local playerName = GetUnitDisplayName("player")
-        for name, _ in pairs(CC.UserData) do
+        for name, _ in pairs(CC.GroupData) do
             if name ~= playerName then
-                CC.UserData[name] = nil
+                CC.GroupData[name] = nil
             end
         end
 
@@ -154,9 +206,9 @@ function Module:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLoca
         return
     end
 
-    if memberDisplayName and CC.UserData[memberDisplayName] then
-        CC.UserData[memberDisplayName] = nil
-        CC.Debug(string.format("OnGroupMemberLeft: [%s] LEFT GROUP", memberDisplayName))
+    if memberDisplayName and CC.GroupData[memberDisplayName] then
+        CC.GroupData[memberDisplayName] = nil
+        --CC.Debug(string.format("OnGroupMemberLeft: [%s] LEFT GROUP", memberDisplayName))
 
         CC.DisplayStatus:Update()
         if CC.DisplayPanel.SV.isVisible then CC.DisplayPanel:UpdateData() end
@@ -170,6 +222,7 @@ function Module:OnInventorySingleSlotUpdate()
     EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_InventorySingleSlotUpdate_Delay")
     EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Events_InventorySingleSlotUpdate_Delay", 1000, function()
         EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_InventorySingleSlotUpdate_Delay")
+        CC.SpaulderOfRuin:CheckGear()
         CC.Broadcast:SendSyncReply()
     end)
 end
@@ -178,6 +231,22 @@ end
 -- ZONE CHANGE / GO THROUGH DOOR? / PORT
 ----------------------------------------------------------------------------------------------------
 function Module:OnPlayerActivated()
+
+    local currentZoneId = GetUnitRawWorldPosition("player")
+    local cleanZoneId = CC.GetCleanZoneId(currentZoneId)
+
+    -- SPAULDER RESET
+    if self.lastZoneId ~= currentZoneId then
+        self.lastZoneId = currentZoneId
+        CC.SpaulderOfRuin.isActive = false
+        CC.SpaulderOfRuin:SetWarningActive(false)
+    end
+
+    zo_callLater(function()
+        --CC.Debug("|c00FF00OnPlayerActivated|r")
+        CC.SpaulderOfRuin:CheckGear()
+    end, 5000)
+
     self:UpdateTrackedLeader()
     CC.DisplayEffect:ClearAllEffects()
 
@@ -192,18 +261,17 @@ function Module:OnPlayerActivated()
     CC.LaunchPad:LoadPadsForCurrentZone()
 
     -- CHECK ASSIGNMENT ON PORT TO INSTANCE
-    local zoneId = CC.GetCleanZoneId()
-    if zoneId ~= 0 then
+    if cleanZoneId ~= 0 then
         -- CHECK SLAYER
-        if CC.SlayerAssistant.SV.enableAutoPrompt and CC.SlayerAssistant.SV.AssignmentByZone[zoneId] == nil then
-            local zoneName = CC.SlayerAssistant:GetZoneNameFromZoneId(zoneId)
-            CC.DisplayDialog:RequestSlayer(zoneId, zoneName, "None / Unassigned")
+        if CC.SlayerAssistant.SV.enableAutoPrompt and CC.SlayerAssistant.SV.AssignmentByZone[cleanZoneId] == nil then
+            local zoneName = CC.SlayerAssistant:GetZoneNameFromZoneId(cleanZoneId)
+            CC.DisplayDialog:RequestSlayer(cleanZoneId, zoneName, "None / Unassigned")
         end
 
         -- CHECK ARKASIS
-        if CC.ArkasisAssistant.SV.enableAutoPrompt and CC.ArkasisAssistant.SV.AssignmentByZone[zoneId] == nil then
-            local zoneName = CC.ArkasisAssistant:GetZoneNameFromZoneId(zoneId)
-            CC.DisplayDialog:RequestArkasis(zoneId, zoneName, "None / Unassigned")
+        if CC.ArkasisAssistant.SV.enableAutoPrompt and CC.ArkasisAssistant.SV.AssignmentByZone[cleanZoneId] == nil then
+            local zoneName = CC.ArkasisAssistant:GetZoneNameFromZoneId(cleanZoneId)
+            CC.DisplayDialog:RequestArkasis(cleanZoneId, zoneName, "None / Unassigned")
         end
     end
 
@@ -242,14 +310,8 @@ end
 -- REFRESH THE LAST CAST COORDINATION FOR E.G. SYNERGIE LIKE ALKOSH
 ----------------------------------------------------------------------------------------------------
 function Module:RefreshLastCast(abilityId)
-    -- GetUnitRawWorldPosition(string unitTag)
-    -- Returns: integer zoneId, integer worldX, integer worldY, integer worldZ
-    local zoneId, playerX, playerY, playerZ = GetUnitRawWorldPosition("player")
-
-    -- GetMapPlayerPosition(string unitTag)
-    -- Returns: number normalizedX, number normalizedZ, number heading, bool isShownInCurrentMap
-    local normalizedX, normalizedZ, heading, isShownInCurrentMap = GetMapPlayerPosition("player")
-
+    local _, playerX, playerY, playerZ = GetUnitRawWorldPosition("player")
+    local _, _, heading, _ = GetMapPlayerPosition("player")
     local cameraX, cameraY, cameraZ = CC.GetCameraTargetPosition(playerY, 2800)
 
     CC.LastCast.currentTime = GetGameTimeMilliseconds()
@@ -290,71 +352,12 @@ function Module:OnActionSlotAbilityUsed(eventCode, actionSlotIndex)
 end
 
 ----------------------------------------------------------------------------------------------------
--- CACHE UNITNAMES TO MATCH THEM LATER
--- DEBUG /script d(CombatCoordination.UnitNames)
-----------------------------------------------------------------------------------------------------
-function Module:CacheUnitName(abilityName, sourceName, sourceType, targetName, targetType, sourceUnitId, targetUnitId)
-    if sourceType == COMBAT_UNIT_TYPE_PLAYER or sourceType == COMBAT_UNIT_TYPE_GROUP then
-        if sourceUnitId ~= 0 and sourceName and sourceName ~= "" and not CC.UnitNames[sourceUnitId] then
-            CC.UnitNames[sourceUnitId] = zo_strformat("<<1>>", sourceName)
-            if self.SV.enableDebugCacheUnitNames then
-                d(CC.CHAT .. " |c00FF00CHACHE!|r (" .. abilityName .. ") sourceName: " .. CC.UnitNames[sourceUnitId] .. (" sourceUnitId: " .. sourceUnitId))
-            end
-        end
-    end
-    if targetType == COMBAT_UNIT_TYPE_PLAYER or targetType == COMBAT_UNIT_TYPE_GROUP then
-        if targetUnitId ~= 0 and targetName and targetName ~= "" and not CC.UnitNames[targetUnitId] then
-            CC.UnitNames[targetUnitId] = zo_strformat("<<1>>", targetName)
-            if self.SV.enableDebugCacheUnitNames then
-                d(CC.CHAT .. " |c00FF00CHACHE!|r (" .. abilityName .. ") targetName: " .. CC.UnitNames[targetUnitId] .. (" targetUnitId: " .. targetUnitId))
-            end
-        end
-    end
-end
-
-----------------------------------------------------------------------------------------------------
--- OUTPUT ONE COMBAT EVENT (AT A TIME)
-----------------------------------------------------------------------------------------------------
-function Module:DebugCombatEvent(eventCode, result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
-    local chat = "|c00FF00[CC]|r"
-    if result == ACTION_RESULT_EFFECT_GAINED then
-        self.counterCombatEventGained = self.counterCombatEventGained + 1
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        chat = "|cFF0000[CC]|r"
-        self.counterCombatEventFaded = self.counterCombatEventFaded + 1
-    else return end
-
-    local ColorHex = CC.GetColorFromAbilityId(abilityId)
-    local currentTime = GetGameTimeSeconds()
-    local sourceCache = CC.UnitNames[sourceUnitId] or "N/A"
-    local targetCache = CC.UnitNames[targetUnitId] or "N/A"
-
-    d(string.format("%s |c%sabilityId: %d - abilityName: %s|r", chat, ColorHex, abilityId, abilityName))
-    d(string.format("|c%s      - result: %s - hitValue: %d - currentTime: %.3f (s)|r", ColorHex, result, hitValue, currentTime))
-    d(string.format("|c%s      - sourceName: %s - sourceType: %d - sourceUnitId: %d - Cache: %s|r", ColorHex, sourceName, sourceType, sourceUnitId, sourceCache))
-    d(string.format("|c%s      - targetName: %s - targetType: %d - targetUnitId: %d - Cache: %s|r", ColorHex, targetName, targetType, targetUnitId, targetCache))
-end
-
-----------------------------------------------------------------------------------------------------
 -- ON COMBAT EVENT
 ----------------------------------------------------------------------------------------------------
 function Module:OnCombatEvent(eventCode, result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
     if not CC.SV.enableAddon then return end
 
-    -- CACHE UNITNAMES FOR MATCHING ID -> GROUPMEMBER
-    local cacheSource = (sourceUnitId ~= 0 and (sourceType == COMBAT_UNIT_TYPE_PLAYER or sourceType == COMBAT_UNIT_TYPE_GROUP) and not CC.UnitNames[sourceUnitId])
-    local cacheTarget = (targetUnitId ~= 0 and (targetType == COMBAT_UNIT_TYPE_PLAYER or targetType == COMBAT_UNIT_TYPE_GROUP) and not CC.UnitNames[targetUnitId])
-
-    if cacheSource or cacheTarget then
-        self:CacheUnitName(abilityName, sourceName, sourceType, targetName, targetType, sourceUnitId, targetUnitId)
-    end
-
-    -- OUTPUT EVERYTHING [/cc_debug_combatevent]
-    if self.SV.enableDebugOnCombatEvent then
-        self:DebugCombatEvent(eventCode, result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
-    end
-
-    -- MODULE CALLBACK! (IF SO)
+    -- MODULE CALLBACK!
     local SkillModule = self.SkillModules[abilityId]
     if SkillModule and SkillModule.HandleCombatEvent then
         SkillModule:HandleCombatEvent(eventCode, result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
@@ -365,9 +368,6 @@ end
 -- DRAW GROUND EFFECT AFTER COMBAT EVENT (OR CUSTOM)
 ----------------------------------------------------------------------------------------------------
 function Module:HandleCombatEvent(eventCode, result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
-    if result ~= ACTION_RESULT_EFFECT_GAINED then return end
-    if sourceType ~= COMBAT_UNIT_TYPE_PLAYER then return end
-
     local ID = abilityId
     local SkillData = CC.SkillData[ID]
     if not SkillData then return end
@@ -537,8 +537,6 @@ function CC.DrawCombatVisuals(self, isPlayer, unitTag, ID, TX, TY, TZ, RX, RY, R
             FY = true
         end
 
-        -- local animationMs = CC.DisplayLabel.SV.animationMs
-
         -- DRAW LABEL
         local labelId = CC.DisplayLabel:Draw3DLabel({
             ID = ID,
@@ -579,24 +577,6 @@ function CC.ClearCombatVisuals(self, isPlayer, unitTag)
 end
 
 ----------------------------------------------------------------------------------------------------
--- TEST AND DEBUG
-----------------------------------------------------------------------------------------------------
-function Module:ToggleDebugCombatEvent()
-    self.SV.enableDebugOnCombatEvent = not self.SV.enableDebugOnCombatEvent
-
-    if self.SV.enableDebugOnCombatEvent then
-        self.startTimeCombatEvent = GetGameTimeSeconds()
-        self.counterCombatEventGained = 0
-        self.counterCombatEventFaded = 0
-        d(CC.CHAT .. " |c00FF00Debug [Combat Event] enabled.|r")
-    else
-        local time = GetGameTimeSeconds() - self.startTimeCombatEvent
-        d(string.format("%s |cFF0000Debug [Combat Event] disabled.|r Duration: %.3fs - |c00FF00Gained: %d|r - |cFF0000Faded: %d|r", CC.CHAT, time, self.counterCombatEventGained, self.counterCombatEventFaded))
-    end
-end
-SLASH_COMMANDS["/cc_debug_combatevent"] = function() CC.Events:ToggleDebugCombatEvent() end
-
-----------------------------------------------------------------------------------------------------
 -- CASTS / ABILITYIDS
 ----------------------------------------------------------------------------------------------------
 function Module:ToggleDebugAbility()
@@ -608,31 +588,6 @@ function Module:ToggleDebugAbility()
     end
 end
 SLASH_COMMANDS["/cc_debug_ability"] = function() CC.Events:ToggleDebugAbility() end
-
-----------------------------------------------------------------------------------------------------
--- CACHE FOR UNITNAMES
-----------------------------------------------------------------------------------------------------
-function Module:ToggleDebugCacheUnitNames()
-    self.SV.enableDebugCacheUnitNames = not self.SV.enableDebugCacheUnitNames
-    if self.SV.enableDebugCacheUnitNames then
-        d(CC.CHAT .. " |c00FF00Debug [Cache] enabled.|r")
-    else
-        d(CC.CHAT .. " |cFF0000Debug [Cache] disabled.|r")
-    end
-end
-SLASH_COMMANDS["/cc_debug_cache"] = function() CC.Events:ToggleDebugCacheUnitNames() end
-
-function Module:CacheClean()
-    ZO_ClearTable(CC.UnitNames)
-    d(CC.CHAT .. " |cFF0000Cache cleared.|r")
-end
-SLASH_COMMANDS["/cc_cache_clean"] = function() CC.Events:CacheClean() end
-
-function Module:CachePrint()
-    d(CC.CHAT .. " |c00FF00Current cache data:|r")
-    d(CC.UnitNames)
-end
-SLASH_COMMANDS["/cc_cache_print"] = function() CC.Events:CachePrint() end
 
 ----------------------------------------------------------------------------------------------------
 -- REGISTER MODULE

@@ -288,8 +288,8 @@ function Module:BuildInstallCheckContainer()
     self.InstallInfoLabel:SetVerticalAlignment(TEXT_ALIGN_TOP)
 
     self.InstallTexture = WINDOW_MANAGER:CreateControl("CC_DisplayDialog_InstallTexture", Content, CT_TEXTURE)
-    self.InstallTexture:SetTexture("CombatCoordination/textures/circle_cc.dds")
-    --self.InstallTexture:SetTexture("CombatCoordination/icons/logo_cc.dds")
+    --self.InstallTexture:SetTexture("CombatCoordination/textures/circle_cc.dds")
+    self.InstallTexture:SetTexture("CombatCoordination/icons/logo_cc.dds")
 
     self.ButtonInstallYes = self:CreateButton("CC_DisplayDialog_ButtonInstallYes", Content, "YES, I SEE IT", function()
         CC.SV.isTextureVisible = true

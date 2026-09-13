@@ -429,6 +429,16 @@ function Module:UpdateTick()
         showLabel = true
         ColorLine1 = { 0, 1, 0, 1 }
         textLine1 = "BREAK OVER"
+
+    ----------------------------------------------------------------------------------------------------
+    -- SPAULDER WARNING
+    ----------------------------------------------------------------------------------------------------
+    elseif CC.SpaulderOfRuin and CC.SpaulderOfRuin.isWarningActive then
+        showLabel = true
+        ColorLine1 = { 1, 0, 0, 1 }
+        ColorLine2 = { 1, 1, 1, 1 }
+        textLine1 = "SPAULDER OF RUIN"
+        textLine2 = "NOT ACTIVE"
     end
 
     if showLabel then
@@ -460,7 +470,9 @@ function Module:UpdateTick()
         and self.finishedEndTime < currentTime
         and self.pullEndTime == 0
         and self.pullFinishedEndTime < currentTime
-        and self.wipeEndTime == 0 then
+        and self.wipeEndTime == 0
+        and self.portInEndTime == 0
+        and not (CC.SpaulderOfRuin and CC.SpaulderOfRuin.isWarningActive) then
             EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
         end
     end
@@ -713,6 +725,15 @@ function Module:TriggerBreak(timeSec, sourceName, isRestore)
     EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop")
     EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "DisplayNotification_UpdateLoop", 100, function() self:UpdateTick() end)
 
+    self:UpdateTick()
+end
+
+----------------------------------------------------------------------------------------------------
+-- TRIGGER SPAULDER OF RUIN
+----------------------------------------------------------------------------------------------------
+function Module:TriggerSpaulder(timeSec, senderName)
+    self.spaulderEndTime = GetGameTimeSeconds() + timeSec
+    self.spaulderTargetName = senderName
     self:UpdateTick()
 end
 

@@ -8,22 +8,27 @@ function CC.Enable()
 
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_INVENTORY_SINGLE_SLOT_UPDATE", EVENT_INVENTORY_SINGLE_SLOT_UPDATE, function(...) CC.Events:OnInventorySingleSlotUpdate(...) end)
     EVENT_MANAGER:AddFilterForEvent(CC.NAME .. "EVENT_INVENTORY_SINGLE_SLOT_UPDATE", EVENT_INVENTORY_SINGLE_SLOT_UPDATE, REGISTER_FILTER_BAG_ID, BAG_WORN, REGISTER_FILTER_INVENTORY_UPDATE_REASON, INVENTORY_UPDATE_REASON_DEFAULT)
-
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_PLAYER_ACTIVATED", EVENT_PLAYER_ACTIVATED, function(...) CC.Events:OnPlayerActivated(...) end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_PLAYER_COMBAT_STATE", EVENT_PLAYER_COMBAT_STATE, function(...) CC.Events:OnPlayerCombatState(...) end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_ACTION_SLOT_ABILITY_USED", EVENT_ACTION_SLOT_ABILITY_USED, function(...) CC.Events:OnActionSlotAbilityUsed(...) end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_ACTION_SLOTS_ALL_HOTBARS_UPDATED", EVENT_ACTION_SLOTS_ALL_HOTBARS_UPDATED, function() CC.SkillBlocker:UpdateEquippedSkills() end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_GROUP_MEMBER_JOINED", EVENT_GROUP_MEMBER_JOINED, function(...) CC.Events:OnGroupMemberJoined(...) end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_GROUP_MEMBER_LEFT", EVENT_GROUP_MEMBER_LEFT, function(...) CC.Events:OnGroupMemberLeft(...) end)
-    EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_UNIT_DEATH_STATE_CHANGED", EVENT_UNIT_DEATH_STATE_CHANGED, function(...) CC.DeathMarker:OnDeathStateChanged(...) end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_GROUP_MEMBER_CONNECTED_STATUS", EVENT_GROUP_MEMBER_CONNECTED_STATUS, function(...) CC.Events:OnGroupMemberConnectedStatus(...) end)
     EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_LEADER_UPDATE", EVENT_LEADER_UPDATE, function(...) CC.Events:OnLeaderUpdate(...) end)
+    EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_GROUP_MEMBER_ROLE_CHANGED", EVENT_GROUP_MEMBER_ROLE_CHANGED, function(...) CC.Events:OnGroupMemberRoleChanged(...) end)
+    EVENT_MANAGER:RegisterForEvent(CC.NAME .. "EVENT_UNIT_DEATH_STATE_CHANGED", EVENT_UNIT_DEATH_STATE_CHANGED, function(...)
+        CC.DeathMarker:OnDeathStateChanged(...)
+        CC.SpaulderOfRuin:OnDeathStateChanged(...)
+    end)
+
+    EVENT_MANAGER:RegisterForUpdate(CC.NAME .. "Events_UpdateGroupDataLoop", 1000, function() CC.Events:UpdateGroupDataLoop() end)
 
     -- COMBAT EVENT
     for abilityId, _ in pairs(CC.Events.SkillModules) do
-        local name = CC.NAME .. "EVENT_COMBAT_EVENT_" .. tostring(abilityId)
+        local name = CC.NAME .. "EVENT_COMBAT_EVENT" .. tostring(abilityId)
         EVENT_MANAGER:RegisterForEvent(name, EVENT_COMBAT_EVENT, function(...) CC.Events:OnCombatEvent(...) end)
-        EVENT_MANAGER:AddFilterForEvent(name, EVENT_COMBAT_EVENT, REGISTER_FILTER_ABILITY_ID, abilityId)
+        EVENT_MANAGER:AddFilterForEvent(name, EVENT_COMBAT_EVENT, REGISTER_FILTER_ABILITY_ID, abilityId, REGISTER_FILTER_SOURCE_COMBAT_UNIT_TYPE, COMBAT_UNIT_TYPE_PLAYER, REGISTER_FILTER_COMBAT_RESULT, ACTION_RESULT_EFFECT_GAINED)
     end
 
     -- EFFECT CHANGED
@@ -32,11 +37,12 @@ function CC.Enable()
     for buffId, _ in pairs(CC.SkillBlocker.BlockableBuffs) do RegisteredBuffs[buffId] = true end
 
     for buffId, _ in pairs(RegisteredBuffs) do
-        local name = CC.NAME .. "EVENT_EFFECT_CHANGED_" .. tostring(buffId)
+        local name = CC.NAME .. "EVENT_EFFECT_CHANGED" .. tostring(buffId)
         EVENT_MANAGER:RegisterForEvent(name, EVENT_EFFECT_CHANGED, function(...) CC.Events:OnEffectChanged(...) end)
         EVENT_MANAGER:AddFilterForEvent(name, EVENT_EFFECT_CHANGED, REGISTER_FILTER_UNIT_TAG, "player", REGISTER_FILTER_ABILITY_ID, buffId)
     end
 
+    -- CUSTOM ENABLE
     for _, Module in ipairs(CC.Modules) do
         if Module.CustomEnable then
             Module:CustomEnable()
@@ -63,10 +69,13 @@ function CC.Disable()
     EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_UNIT_DEATH_STATE_CHANGED", EVENT_UNIT_DEATH_STATE_CHANGED)
     EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_GROUP_MEMBER_CONNECTED_STATUS", EVENT_GROUP_MEMBER_CONNECTED_STATUS)
     EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_LEADER_UPDATE", EVENT_LEADER_UPDATE)
+    EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_GROUP_MEMBER_ROLE_CHANGED", EVENT_GROUP_MEMBER_ROLE_CHANGED)
+
+    EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "Events_UpdateGroupDataLoop")
 
     -- COMBAT EVENT
     for abilityId, _ in pairs(CC.Events.SkillModules) do
-        EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_COMBAT_EVENT_" .. tostring(abilityId), EVENT_COMBAT_EVENT)
+        EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_COMBAT_EVENT" .. tostring(abilityId), EVENT_COMBAT_EVENT)
     end
 
     -- EFFECT CHANGED
@@ -75,9 +84,10 @@ function CC.Disable()
     for buffId, _ in pairs(CC.SkillBlocker.BlockableBuffs) do RegisteredBuffs[buffId] = true end
 
     for buffId, _ in pairs(RegisteredBuffs) do
-        EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_EFFECT_CHANGED_" .. tostring(buffId), EVENT_EFFECT_CHANGED)
+        EVENT_MANAGER:UnregisterForEvent(CC.NAME .. "EVENT_EFFECT_CHANGED" .. tostring(buffId), EVENT_EFFECT_CHANGED)
     end
 
+    -- CUSTOM DISABLE
     for _, Module in ipairs(CC.Modules) do
         if Module.CustomDisable then
             Module:CustomDisable()

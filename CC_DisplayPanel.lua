@@ -12,6 +12,17 @@ local Module = {
     AddonUserLabels = {},
     SlayerSetUserLabels = {},
     ArkasisUserLabels = {},
+    SpaulderUserLabels = {},
+    RegisteredButtons = {},
+    SpaulderSortBuffer = {},
+    AddonUserSortBuffer = {},
+    SlayerSortBuffer = {},
+    ArkasisSortBuffer = {},
+
+    activeAddonUserLabels = 0,
+    activeSlayerSetUserLabels = 0,
+    activeArkasisUserLabels = 0,
+    activeSpaulderUserLabels = 0,
 
     maxLengthDisplayName = 14,
 
@@ -21,7 +32,7 @@ local Module = {
     GN_NORMAL    = { 0, 1, 0, 1 },
     RD_NORMAL    = { 1, 0, 0, 1 },
     BL_NORMAL    = { 0, 0.5, 1, 1 },
-    YL_NORMAL    = { 1, 0.875, 0, 1 },
+    YL_NORMAL    = { 1, 1, 0, 1 },
 
     OG_HIGHLIGHT = { 1,    0.75,  0.5,  1 }, -- CONTAINER ON MOUSE CLICK
     OG_BRIGHT    = { 1,    0.625, 0.25, 1 }, -- CONTAINER TITLE; BREAK TIMER TITLE; PULL TIMER TITLE
@@ -45,13 +56,9 @@ local Module = {
         heightElement    = 24,  -- HEIGHT OF BUTTONS AND TEXT
     },
 
-    Font = {
-        Title         = "$(BOLD_FONT)|$(KB_18)|soft-shadow-thick",
-        SubTitle      = "$(BOLD_FONT)|$(KB_18)|soft-shadow-thick",
-        Button        = "$(BOLD_FONT)|$(KB_16)|soft-shadow-thick",
-        Normal        = "$(BOLD_FONT)|$(KB_16)|soft-shadow-thick",
-        Small         = "$(BOLD_FONT)|$(KB_14)|soft-shadow-thick",
-    },
+    FONT_SIZE_LARGE  = 18,
+    FONT_SIZE_MEDIUM = 16,
+    FONT_SIZE_SMALL  = 14,
 
     -------------------------------------------------------------------------------------------------
     -- SAVED VARS
@@ -62,28 +69,156 @@ local Module = {
         panelWidth = 300,
         panelScale = 1,
         anchorMode = 1, -- 1 = TOP, 2 = MID, 3 = BOT
-
         colorA = 0.75,
+
+        fontStyle = "$(BOLD_FONT)",
+        fontWeight = "soft-shadow-thick",
 
         isVisible              = true,
         isMinimized            = false,
         isOpenAddonUsers       = false,
-        isOpenSlayerAssistant  = false,
         isOpenArkasisAssistant = false,
-        isOpenPointer          = false,
-        isOpenLaunchPad        = false,
-        isOpenRaidleadTools    = false,
         isOpenDrawShape        = false,
+        isOpenLaunchPad        = false,
+        isOpenPointer          = false,
+        isOpenRaidleadTools    = false,
+        isOpenSlayerAssistant  = false,
+        isOpenSpaulderOfRuin   = false,
     },
     ---@type table|any
     SV = {},
 }
 
 ----------------------------------------------------------------------------------------------------
+-- FONT STRINGS
+----------------------------------------------------------------------------------------------------
+function Module:UpdateFonts()
+    local style = self.SV.fontStyle or "$(BOLD_FONT)"
+    local weight = self.SV.fontWeight or "soft-shadow-thick"
+
+    self.Font = {
+        Title    = string.format("%s|$(KB_%d)|%s", style, self.FONT_SIZE_LARGE, weight),
+        SubTitle = string.format("%s|$(KB_%d)|%s", style, self.FONT_SIZE_LARGE, weight),
+        Button   = string.format("%s|$(KB_%d)|%s", style, self.FONT_SIZE_MEDIUM, weight),
+        Normal   = string.format("%s|$(KB_%d)|%s", style, self.FONT_SIZE_MEDIUM, weight),
+        Small    = string.format("%s|$(KB_%d)|%s", style, self.FONT_SIZE_SMALL, weight),
+    }
+end
+
+----------------------------------------------------------------------------------------------------
+-- APPLY FONTS
+----------------------------------------------------------------------------------------------------
+function Module:ApplyFonts()
+    self:UpdateFonts()
+    if not self.Parent then return end
+
+    self.MainTitle:SetFont(self.Font.Title)
+    self.LabelAuthor:SetFont(self.Font.Small)
+
+    -- CONTAINERS
+    local Containers = {
+        self.ContainerAddonUsers,
+        self.ContainerArkasisAssistant,
+        self.DrawShapeContainer,
+        self.ContainerLaunchPad,
+        self.PointerContainer,
+        self.ContainerRaidleadTools,
+        self.ContainerSlayerAssistant,
+        self.ContainerSpaulderOfRuin
+    }
+    for _, Container in ipairs(Containers) do
+        if Container and Container.Title then Container.Title:SetFont(self.Font.SubTitle) end
+    end
+
+    -- INFO LABELS
+    local InfoLabels = {
+        self.AddonUsersInfoLabel,
+        self.DrawShapeInfoLabel,
+        self.LaunchPadInfoLabel,
+        self.PointerInfoLabel,
+        self.RaidleadToolsInfoLabel,
+        self.SpaulderInfoLabel
+    }
+    for _, Label in ipairs(InfoLabels) do
+        if Label then Label:SetFont(self.Font.Small) end
+    end
+
+    -- LABEL POOLS
+    local Pools = {
+        self.AddonUserLabels, self.ArkasisUserLabels, self.SlayerSetUserLabels, self.SpaulderUserLabels
+    }
+    for _, Pool in ipairs(Pools) do
+        for _, Label in pairs(Pool) do
+            Label:SetFont(self.Font.Normal)
+        end
+    end
+
+    -- NORMAL LABELS
+    local NormalLabels = {
+        self.ArkasisAssistantPositionLabel,
+        self.DrawShapeLabelToggle,
+        self.DrawShapeLabelValueX,
+        self.DrawShapeLabelValueZ,
+        self.LaunchPadCatLabelToggle,
+        self.LaunchPadLabelToggle,
+        self.SlayerAssistantPositionLabel
+    }
+    for _, Label in ipairs(NormalLabels) do
+        if Label then Label:SetFont(self.Font.Normal) end
+    end
+
+    -- BUTTONS
+    for _, Button in ipairs(self.RegisteredButtons) do
+        if Button then Button:SetFont(self.Font.Button) end
+    end
+
+    self:UpdateDimensions()
+end
+
+----------------------------------------------------------------------------------------------------
+-- ROLE ICON
+----------------------------------------------------------------------------------------------------
+function Module:GetPlayerIconByRole(selectedRole)
+    local fontSize = self.FONT_SIZE_MEDIUM
+
+    if selectedRole == LFG_ROLE_TANK then return string.format("|t%s:%s:/esoui/art/lfg/lfg_icon_tank.dds|t", fontSize, fontSize) end
+    if selectedRole == LFG_ROLE_HEAL then return string.format("|t%s:%s:/esoui/art/lfg/lfg_icon_healer.dds|t", fontSize, fontSize) end
+    if selectedRole == LFG_ROLE_DPS then return string.format("|t%s:%s:/esoui/art/lfg/lfg_icon_dps.dds|t", fontSize, fontSize) end
+
+    return ""
+end
+
+----------------------------------------------------------------------------------------------------
+-- SHORT(ER) DISPLAY NAME BECAUSE OF KENDRASMYNAMEISUNNECESSARYLONGKENPACHI
+----------------------------------------------------------------------------------------------------
+function Module:GetShortName(longName, maxLength)
+    local limit = maxLength or self.maxLengthDisplayName
+    local shortName = tostring(longName)
+
+    if zo_strlen(shortName) > limit then
+        shortName = zo_strsub(shortName, 1, limit):gsub("%s+$", "") .. ".."
+    end
+
+    return shortName
+end
+
+----------------------------------------------------------------------------------------------------
+-- TITLE WITH AN ICON
+----------------------------------------------------------------------------------------------------
+function Module:GetTitleWithIcon(ModuleObject, titleText)
+    if ModuleObject and ModuleObject.iconPath then
+        local icon = string.format("|t%d:%d:%s|t ", CC.SIZE_ICON_DISPLAYPANEL, CC.SIZE_ICON_DISPLAYPANEL, ModuleObject.iconPath)
+        return icon .. titleText
+    end
+    return titleText
+end
+
+----------------------------------------------------------------------------------------------------
 -- CREATE PANEL
 ----------------------------------------------------------------------------------------------------
 function Module:CreatePanel()
     if self.Parent then return end
+    self:UpdateFonts()
 
     -- MAIN WINDOW
     self.Parent = WINDOW_MANAGER:CreateTopLevelWindow("CC_DisplayPanel_Parent")
@@ -221,12 +356,13 @@ function Module:CreatePanel()
 
     -- BUILD CONTS
     self:BuildAddonUsersContainer()
+    self:BuildArkasisAssistantContainer()
     self:BuildDrawShapeContainer()
     self:BuildLaunchPadContainer()
     self:BuildPointerContainer()
     self:BuildRaidleadToolsContainer()
     self:BuildSlayerAssistantContainer()
-    self:BuildArkasisAssistantContainer()
+    self:BuildSpaulderOfRuinContainer()
 
     -- THX ExoY FOR TEACHING ME THIS
     self.Fragment = ZO_HUDFadeSceneFragment:New(self.Parent)
@@ -280,6 +416,7 @@ function Module:CreateButton(name, Parent, text, callback)
     Button:SetHandler("OnMouseUp",    function() SetEdge(2) Background:SetEdgeColor(unpack(self.ESO_NORMAL)) end)
     Button:SetHandler("OnMouseExit",  function() SetEdge(1) Background:SetEdgeColor(unpack(self.ESO_MUTED)) end)
 
+    table.insert(self.RegisteredButtons, Button)
     return Button
 end
 
@@ -404,7 +541,7 @@ function Module:ApplyAnchor()
 end
 
 ----------------------------------------------------------------------------------------------------
--- [A] ADDON USERS AND PING
+-- ADDON USERS AND PING
 ----------------------------------------------------------------------------------------------------
 function Module:BuildAddonUsersContainer()
     self.ContainerAddonUsers = self:CreateContainer("CC_DisplayPanel_ContainerAddonUsers", "isOpenAddonUsers")
@@ -423,7 +560,61 @@ function Module:BuildAddonUsersContainer()
 end
 
 ----------------------------------------------------------------------------------------------------
--- [D] DRAW SHAPE
+-- ARKASIS ASSISTANT
+----------------------------------------------------------------------------------------------------
+function Module:BuildArkasisAssistantContainer()
+    self.ContainerArkasisAssistant = self:CreateContainer("CC_DisplayPanel_ContainerArkasisAssistant", "isOpenArkasisAssistant")
+    local Content = self.ContainerArkasisAssistant.Content
+
+    self.ArkasisAssistantPositionLabel = WINDOW_MANAGER:CreateControl("CC_DisplayPanel_ArkasisAssistantPositionLabel", Content, CT_LABEL)
+    self.ArkasisAssistantPositionLabel:SetFont(self.Font.Normal)
+    self.ArkasisAssistantPositionLabel:SetColor(unpack(self.ESO_NORMAL))
+    self.ArkasisAssistantPositionLabel:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
+    self.ArkasisAssistantPositionLabel:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+
+    self.ArkasisAssistantButtonAssign = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonAssign", Content, "REQ ASSIGN", function()
+        CC.ArkasisAssistant:SendAssignmentRequest()
+    end)
+
+    self.ArkasisAssistantButtonStatus = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonStatus", Content, "REQ STATUS", function()
+        CC.Broadcast:SendSyncRequest(true, true)
+    end)
+
+    self.ArkasisAssistantButtonSet1 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonSet1", Content, "STACK 1", function()
+        CC.ArkasisAssistant:AssignPlayerSide(CC.ArkasisAssistant.SIDE_1)
+    end)
+
+    self.ArkasisAssistantButtonSet2 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonSet2", Content, "STACK 2", function()
+        CC.ArkasisAssistant:AssignPlayerSide(CC.ArkasisAssistant.SIDE_2)
+    end)
+
+    self.ArkasisAssistantButtonSet3 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonSet3", Content, "STACK 3", function()
+        CC.ArkasisAssistant:AssignPlayerSide(CC.ArkasisAssistant.SIDE_3)
+    end)
+
+    local function ChangeArkasisSeconds(amount)
+        local currentSec = (CC.ArkasisAssistant.SV.durationMs / 1000) or 5
+        local newSec = math.max(1, math.min(15, currentSec + amount))
+        CC.ArkasisAssistant.SV.durationMs = newSec * 1000
+        self:UpdateData()
+    end
+
+    self.ArkasisAssistantButtonToggle = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonToggle", Content, "START ARKASIS", function()
+        if CC.DisplayNotification.arkasisEndTime > GetGameTimeSeconds() then
+            CC.ArkasisAssistant:ArkasisTrigger(true, 0)
+        else
+            CC.ArkasisAssistant:ArkasisTrigger(true)
+        end
+    end)
+
+    self.ArkasisAssistantButtonMinus5 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantMinus5", Content, "<<", function() ChangeArkasisSeconds(-5) end)
+    self.ArkasisAssistantButtonMinus1 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantMinus1", Content, "<", function() ChangeArkasisSeconds(-1) end)
+    self.ArkasisAssistantButtonPlus1  = self:CreateButton("CC_DisplayPanel_ArkasisAssistantPlus1", Content, ">", function() ChangeArkasisSeconds(1) end)
+    self.ArkasisAssistantButtonPlus5  = self:CreateButton("CC_DisplayPanel_ArkasisAssistantPlus5", Content, ">>", function() ChangeArkasisSeconds(5) end)
+end
+
+----------------------------------------------------------------------------------------------------
+-- DRAW SHAPE
 ----------------------------------------------------------------------------------------------------
 function Module:BuildDrawShapeContainer()
     self.DrawShapeContainer = self:CreateContainer("CC_DisplayPanel_DrawShapeContainer", "isOpenDrawShape")
@@ -518,7 +709,7 @@ function Module:BuildDrawShapeContainer()
 end
 
 ----------------------------------------------------------------------------------------------------
--- [L] LAUNCH PAD
+-- LAUNCH PAD
 ----------------------------------------------------------------------------------------------------
 function Module:BuildLaunchPadContainer()
     self.ContainerLaunchPad = self:CreateContainer("CC_DisplayPanel_LaunchPadContainer", "isOpenLaunchPad")
@@ -545,8 +736,8 @@ function Module:BuildLaunchPadContainer()
             table.insert(CategoriesMap[category], id)
         end
         table.sort(CategoryChoices)
-        for _, ids in pairs(CategoriesMap) do
-            table.sort(ids)
+        for _, Ids in pairs(CategoriesMap) do
+            table.sort(Ids)
         end
         return CategoryChoices, CategoriesMap
     end
@@ -665,7 +856,7 @@ function Module:BuildLaunchPadContainer()
 end
 
 ----------------------------------------------------------------------------------------------------
--- [P] POINTER
+-- POINTER
 ----------------------------------------------------------------------------------------------------
 function Module:BuildPointerContainer()
     self.PointerContainer = self:CreateContainer("CC_DisplayPanel_PointerContainer", "isOpenPointer")
@@ -691,7 +882,7 @@ function Module:BuildPointerContainer()
 end
 
 ----------------------------------------------------------------------------------------------------
--- [R] RAIDLEAD TOOLS
+-- RAIDLEAD TOOLS
 ----------------------------------------------------------------------------------------------------
 function Module:BuildRaidleadToolsContainer()
     self.ContainerRaidleadTools = self:CreateContainer("CC_DisplayPanel_ContainerRaidleadTools", "isOpenRaidleadTools")
@@ -786,7 +977,7 @@ function Module:BuildRaidleadToolsContainer()
 end
 
 ----------------------------------------------------------------------------------------------------
--- [S] SLAYER ASSISTANT
+-- SLAYER ASSISTANT
 ----------------------------------------------------------------------------------------------------
 function Module:BuildSlayerAssistantContainer()
     self.ContainerSlayerAssistant = self:CreateContainer("CC_DisplayPanel_ContainerSlayerAssistant", "isOpenSlayerAssistant")
@@ -836,82 +1027,31 @@ function Module:BuildSlayerAssistantContainer()
 end
 
 ----------------------------------------------------------------------------------------------------
--- [K] ARKASIS ASSISTANT
+-- SPAULDER OF RUIN
 ----------------------------------------------------------------------------------------------------
-function Module:BuildArkasisAssistantContainer()
-    self.ContainerArkasisAssistant = self:CreateContainer("CC_DisplayPanel_ContainerArkasisAssistant", "isOpenArkasisAssistant")
-    local Content = self.ContainerArkasisAssistant.Content
+function Module:BuildSpaulderOfRuinContainer()
+    self.ContainerSpaulderOfRuin = self:CreateContainer("CC_DisplayPanel_ContainerSpaulderOfRuin", "isOpenSpaulderOfRuin")
+    local Content = self.ContainerSpaulderOfRuin.Content
 
-    self.ArkasisAssistantPositionLabel = WINDOW_MANAGER:CreateControl("CC_DisplayPanel_ArkasisAssistantPositionLabel", Content, CT_LABEL)
-    self.ArkasisAssistantPositionLabel:SetFont(self.Font.Normal)
-    self.ArkasisAssistantPositionLabel:SetColor(unpack(self.ESO_NORMAL))
-    self.ArkasisAssistantPositionLabel:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
-    self.ArkasisAssistantPositionLabel:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    -- INFO LABEL
+    self.SpaulderInfoLabel = WINDOW_MANAGER:CreateControl("CC_DisplayPanel_SpaulderInfoLabel", Content, CT_LABEL)
+    self.SpaulderInfoLabel:SetFont(self.Font.Small)
+    self.SpaulderInfoLabel:SetColor(unpack(self.ESO_NORMAL))
+    self.SpaulderInfoLabel:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
+    self.SpaulderInfoLabel:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    self.SpaulderInfoLabel:SetText("|c00FF00Green:|r Selected [SOR] and buffed.\n" ..
+                                   "|cFFFF00Yellow:|r Buffed but not selected.\n" ..
+                                   "|cFF0000Red:|r Missing buff despite selected!\n" ..
+                                   "Click players below to toggle [SOR].")
 
-    self.ArkasisAssistantButtonAssign = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonAssign", Content, "REQ ASSIGN", function()
-        CC.ArkasisAssistant:SendAssignmentRequest()
+    self.SpaulderButtonKick = self:CreateButton("CC_DisplayPanel_SpaulderButtonKick", Content, "KICK & INVITE", function()
+        CC.SpaulderOfRuin:KickAndReinvite()
     end)
+    self.SpaulderButtonKick:SetCustomColors(self.GN_NORMAL)
 
-    self.ArkasisAssistantButtonStatus = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonStatus", Content, "REQ STATUS", function()
-        CC.Broadcast:SendSyncRequest(true, true)
+    self.SpaulderButtonReinvite = self:CreateButton("CC_DisplayPanel_SpaulderButtonReinvite", Content, "REINVITE", function()
+        CC.SpaulderOfRuin:Reinvite()
     end)
-
-    self.ArkasisAssistantButtonSet1 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonSet1", Content, "STACK 1", function()
-        CC.ArkasisAssistant:AssignPlayerSide(CC.ArkasisAssistant.SIDE_1)
-    end)
-
-    self.ArkasisAssistantButtonSet2 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonSet2", Content, "STACK 2", function()
-        CC.ArkasisAssistant:AssignPlayerSide(CC.ArkasisAssistant.SIDE_2)
-    end)
-
-    self.ArkasisAssistantButtonSet3 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonSet3", Content, "STACK 3", function()
-        CC.ArkasisAssistant:AssignPlayerSide(CC.ArkasisAssistant.SIDE_3)
-    end)
-
-    local function ChangeArkasisSeconds(amount)
-        local currentSec = (CC.ArkasisAssistant.SV.durationMs / 1000) or 5
-        local newSec = math.max(1, math.min(15, currentSec + amount))
-        CC.ArkasisAssistant.SV.durationMs = newSec * 1000
-        self:UpdateData()
-    end
-
-    self.ArkasisAssistantButtonToggle = self:CreateButton("CC_DisplayPanel_ArkasisAssistantButtonToggle", Content, "START ARKASIS", function()
-        if CC.DisplayNotification.arkasisEndTime > GetGameTimeSeconds() then
-            CC.ArkasisAssistant:ArkasisTrigger(true, 0)
-        else
-            CC.ArkasisAssistant:ArkasisTrigger(true)
-        end
-    end)
-
-    self.ArkasisAssistantButtonMinus5 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantMinus5", Content, "<<", function() ChangeArkasisSeconds(-5) end)
-    self.ArkasisAssistantButtonMinus1 = self:CreateButton("CC_DisplayPanel_ArkasisAssistantMinus1", Content, "<", function() ChangeArkasisSeconds(-1) end)
-    self.ArkasisAssistantButtonPlus1  = self:CreateButton("CC_DisplayPanel_ArkasisAssistantPlus1", Content, ">", function() ChangeArkasisSeconds(1) end)
-    self.ArkasisAssistantButtonPlus5  = self:CreateButton("CC_DisplayPanel_ArkasisAssistantPlus5", Content, ">>", function() ChangeArkasisSeconds(5) end)
-end
-
-----------------------------------------------------------------------------------------------------
--- SHORT(ER) DISPLAY NAME BECAUSE OF KENDRASMYNAMEISUNNECESSARYLONGKENPACHI
-----------------------------------------------------------------------------------------------------
-function Module:GetShortName(longName, maxLength)
-    local limit = maxLength or self.maxLengthDisplayName
-    local shortName = tostring(longName)
-
-    if zo_strlen(shortName) > limit then
-        shortName = zo_strsub(shortName, 1, limit):gsub("%s+$", "") .. ".."
-    end
-
-    return shortName
-end
-
-----------------------------------------------------------------------------------------------------
--- TITLE WITH AN ICON
-----------------------------------------------------------------------------------------------------
-function Module:GetTitleWithIcon(ModuleObject, titleText)
-    if ModuleObject and ModuleObject.iconPath then
-        local icon = string.format("|t%d:%d:%s|t ", CC.SIZE_ICON_DISPLAYPANEL, CC.SIZE_ICON_DISPLAYPANEL, ModuleObject.iconPath)
-        return icon .. titleText
-    end
-    return titleText
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -924,68 +1064,135 @@ function Module:UpdateData()
     local currentZoneId = CC.GetCleanZoneId()
 
     ----------------------------------------------------------------------------------------------------
-    -- [A] ADDON USERS DATA
+    -- INJECT LOCAL PLAYER TO ENSURE VISIBILITY IN LISTS
+    ----------------------------------------------------------------------------------------------------
+    local playerName = GetUnitDisplayName("player")
+    if playerName and playerName ~= "" then
+        CC.GroupData[playerName] = CC.GroupData[playerName] or {}
+        local PlayerData = CC.GroupData[playerName]
+
+        PlayerData.displayName = playerName
+        PlayerData.unitTag = "player"
+        PlayerData.isOnline = true
+        PlayerData.selectedRole = GetSelectedLFGRole()
+        PlayerData.isAddonUser = true
+        PlayerData.pingMs = GetLatency()
+        PlayerData.distance = 0
+        PlayerData.isRaidlead = IsUnitGroupLeader("player")
+
+        if CC.ArkasisAssistant and CC.ArkasisAssistant.SV then
+            PlayerData.ArkasisAssistant = PlayerData.ArkasisAssistant or {}
+            PlayerData.ArkasisAssistant.isEquipped = CC.GetPlayerSetStatus("ARKASIS") or 0
+            PlayerData.ArkasisAssistant.zoneId = currentZoneId
+            PlayerData.ArkasisAssistant.sideId = CC.ArkasisAssistant.SV.AssignmentByZone[currentZoneId] or 0
+        end
+
+        if CC.SlayerAssistant and CC.SlayerAssistant.SV then
+            PlayerData.SlayerAssistant = PlayerData.SlayerAssistant or {}
+            PlayerData.SlayerAssistant.isEquipped = CC.GetPlayerSetStatus("SLAYER") or 0
+            PlayerData.SlayerAssistant.zoneId = currentZoneId
+            PlayerData.SlayerAssistant.sideId = CC.SlayerAssistant.SV.AssignmentByZone[currentZoneId] or 0
+        end
+    end
+
+    ----------------------------------------------------------------------------------------------------
+    -- ADDON USERS DATA
     ----------------------------------------------------------------------------------------------------
     local countAddonUsers = 0
     self.activeAddonUserLabels = 0
 
-    for displayName, User in pairs(CC.UserData) do
-        countAddonUsers = countAddonUsers + 1
-        if self.SV.isOpenAddonUsers then
-            self.activeAddonUserLabels = self.activeAddonUserLabels + 1
-            local Label = self:GetOrCreateLabel(self.AddonUserLabels, "AddonUserLabels", self.activeAddonUserLabels, self.ContainerAddonUsers.Content, TEXT_ALIGN_LEFT)
-            local numPing = User.ping or 0
-            local isRaidlead = User.isRaidlead and " |cFFDF00RL|r" or ""
+    if self.SV.isOpenAddonUsers then
+        ZO_ClearTable(self.AddonUserSortBuffer)
 
-            -- ZONE CHECK
-            local slayerZoneId = User.SlayerAssistant and User.SlayerAssistant.zoneId or 0
-            local arkasisZoneId = User.ArkasisAssistant and User.ArkasisAssistant.zoneId or 0
-
-            local extraInfo = ""
-
-            if slayerZoneId == currentZoneId or arkasisZoneId == currentZoneId then
-                -- SLAYER SAME ZONE OR ?
-                local stringSlayer = "|c7F7F7F?|r"
-                if slayerZoneId == currentZoneId then
-                local slayerSideId = User.SlayerAssistant and User.SlayerAssistant.sideId or CC.SlayerAssistant.SIDE_NONE
-                local slayerColorHex = CC.GetHexColorFromArray(CC.SlayerAssistant.SV.ColorNone) or "|cBFBFBF"
-                local slayerLetter = "?"
-
-                if slayerSideId == CC.SlayerAssistant.SIDE_LEFT then
-                    slayerLetter = "L"
-                    slayerColorHex = CC.GetHexColorFromArray(CC.SlayerAssistant.SV.ColorLeft)
-                elseif slayerSideId == CC.SlayerAssistant.SIDE_RIGHT then
-                    slayerLetter = "R"
-                    slayerColorHex = CC.GetHexColorFromArray(CC.SlayerAssistant.SV.ColorRight)
+        for displayName, GroupMember in pairs(CC.GroupData) do
+            if GroupMember.isAddonUser then
+                    table.insert(self.AddonUserSortBuffer, {
+                        displayName = displayName,
+                        GroupMember = GroupMember
+                    })
                 end
-                    stringSlayer = string.format("%s%s|r", slayerColorHex, slayerLetter)
-                end
-
-                -- ARKASIS SAME ZONE OR ?
-                local stringArkasis = "|c7F7F7F?|r"
-                if arkasisZoneId == currentZoneId then
-                local arkasisSideId = User.ArkasisAssistant and User.ArkasisAssistant.sideId or CC.ArkasisAssistant.SIDE_NONE
-                local arkasisLetter = "?"
-                local arkasisColorHex = CC.GetHexColorFromArray(CC.ArkasisAssistant.SV.ColorNone) or "|cBFBFBF"
-
-                if arkasisSideId == CC.ArkasisAssistant.SIDE_1 then
-                    arkasisLetter = "1"
-                    arkasisColorHex = CC.ArkasisAssistant.SV.enableGameAoeFriendlyColor and CC.GetHexColorFromArray(CC.GetGameAoeFriendlyColor()) or CC.GetHexColorFromArray(CC.ArkasisAssistant.SV.Color)
-                elseif arkasisSideId == CC.ArkasisAssistant.SIDE_2 then
-                    arkasisLetter = "2"
-                    arkasisColorHex = CC.ArkasisAssistant.SV.enableGameAoeFriendlyColor and CC.GetHexColorFromArray(CC.GetGameAoeFriendlyColor()) or CC.GetHexColorFromArray(CC.ArkasisAssistant.SV.Color)
-                elseif arkasisSideId == CC.ArkasisAssistant.SIDE_3 then
-                    arkasisLetter = "3"
-                    arkasisColorHex = CC.ArkasisAssistant.SV.enableGameAoeFriendlyColor and CC.GetHexColorFromArray(CC.GetGameAoeFriendlyColor()) or CC.GetHexColorFromArray(CC.ArkasisAssistant.SV.Color)
-                end
-                    stringArkasis = string.format("%s%s|r", arkasisColorHex, arkasisLetter)
-                end
-
-                extraInfo = string.format(" - %s / %s", stringSlayer, stringArkasis)
             end
 
-            local shortName = self:GetShortName(displayName, self.maxLengthDisplayName)
-            Label:SetText(string.format("%d) |cFFFFFF%s|r%s (%d ms)%s", self.activeAddonUserLabels, shortName, isRaidlead, numPing, extraInfo))
+            table.sort(self.AddonUserSortBuffer, function(A, B) return A.displayName < B.displayName end)
+
+            for _, Data in ipairs(self.AddonUserSortBuffer) do
+                local GroupMember = Data.GroupMember
+                countAddonUsers = countAddonUsers + 1
+                self.activeAddonUserLabels = self.activeAddonUserLabels + 1
+                local Label = self:GetOrCreateLabel(self.AddonUserLabels, "AddonUserLabels", self.activeAddonUserLabels, self.ContainerAddonUsers.Content, TEXT_ALIGN_LEFT)
+
+                local roleIcon = self:GetPlayerIconByRole(GroupMember.selectedRole)
+                local pingMs = GroupMember.pingMs or 0
+                local isRaidlead = GroupMember.isRaidlead and " |cFFDF00RL|r" or ""
+                --local isRaidlead = GroupMember.isRaidlead and string.format(" |t%s:%s:/esoui/art/compass/groupleader.dds|t", self.FONT_SIZE_MEDIUM, self.FONT_SIZE_MEDIUM) or ""
+
+                -- ZONE CHECK
+                local arkasisZoneId = GroupMember.ArkasisAssistant and GroupMember.ArkasisAssistant.zoneId or 0
+                local slayerZoneId = GroupMember.SlayerAssistant and GroupMember.SlayerAssistant.zoneId or 0
+
+                local extraInfo = ""
+
+                if arkasisZoneId == currentZoneId or slayerZoneId == currentZoneId then
+                    -- ARKASIS SAME ZONE OR ?
+                    local stringArkasis = "|c7F7F7F?|r"
+                    if arkasisZoneId == currentZoneId then
+                        local arkasisSideId = GroupMember.ArkasisAssistant and GroupMember.ArkasisAssistant.sideId or CC.ArkasisAssistant.SIDE_NONE
+                        local arkasisLetter = "?"
+                        local arkasisColorHex = CC.GetHexColorFromArray(CC.ArkasisAssistant.SV.ColorNone) or "|cBFBFBF"
+
+                        if arkasisSideId == CC.ArkasisAssistant.SIDE_1 then
+                            arkasisLetter = "1"
+                            arkasisColorHex = CC.ArkasisAssistant.SV.enableGameAoeFriendlyColor and CC.GetHexColorFromArray(CC.GetGameAoeFriendlyColor()) or CC.GetHexColorFromArray(CC.ArkasisAssistant.SV.Color)
+                        elseif arkasisSideId == CC.ArkasisAssistant.SIDE_2 then
+                            arkasisLetter = "2"
+                            arkasisColorHex = CC.ArkasisAssistant.SV.enableGameAoeFriendlyColor and CC.GetHexColorFromArray(CC.GetGameAoeFriendlyColor()) or CC.GetHexColorFromArray(CC.ArkasisAssistant.SV.Color)
+                        elseif arkasisSideId == CC.ArkasisAssistant.SIDE_3 then
+                            arkasisLetter = "3"
+                            arkasisColorHex = CC.ArkasisAssistant.SV.enableGameAoeFriendlyColor and CC.GetHexColorFromArray(CC.GetGameAoeFriendlyColor()) or CC.GetHexColorFromArray(CC.ArkasisAssistant.SV.Color)
+                        end
+
+                        -- local isArkasisEquipped = GroupMember.ArkasisAssistant.isEquipped or 0
+                        -- if isArkasisEquipped ~= 0 then
+                        --     arkasisLetter = arkasisLetter .. " [" .. CC.ArkasisAssistant:GetSetNameFromStatusId(isArkasisEquipped) .. "]"
+                        -- end
+
+                        stringArkasis = string.format("%s%s|r", arkasisColorHex, arkasisLetter)
+                    end
+
+                    -- SLAYER SAME ZONE OR ?
+                    local stringSlayer = "|c7F7F7F?|r"
+                    if slayerZoneId == currentZoneId then
+                        local slayerSideId = GroupMember.SlayerAssistant and GroupMember.SlayerAssistant.sideId or CC.SlayerAssistant.SIDE_NONE
+                        local slayerColorHex = CC.GetHexColorFromArray(CC.SlayerAssistant.SV.ColorNone) or "|cBFBFBF"
+                        local slayerLetter = "?"
+
+                        if slayerSideId == CC.SlayerAssistant.SIDE_LEFT then
+                            slayerLetter = "L"
+                            slayerColorHex = CC.GetHexColorFromArray(CC.SlayerAssistant.SV.ColorLeft)
+                        elseif slayerSideId == CC.SlayerAssistant.SIDE_RIGHT then
+                            slayerLetter = "R"
+                            slayerColorHex = CC.GetHexColorFromArray(CC.SlayerAssistant.SV.ColorRight)
+                        end
+
+                        -- local isSlayerEquipped = GroupMember.SlayerAssistant.isEquipped or 0
+                        -- if isSlayerEquipped ~= 0 then
+                        --     slayerLetter = slayerLetter .. " [" .. CC.SlayerAssistant:GetSetNameFromStatusId(isSlayerEquipped) .. "]"
+                        -- end
+
+                        stringSlayer = string.format("%s%s|r", slayerColorHex, slayerLetter)
+                    end
+
+                    extraInfo = string.format(" - %s / %s", stringSlayer, stringArkasis)
+                end
+
+            local shortName = self:GetShortName(Data.displayName, self.maxLengthDisplayName)
+            Label:SetText(string.format("%s |cFFFFFF%s|r%s (%d ms)%s", roleIcon, shortName, isRaidlead, pingMs, extraInfo))
+        end
+    else
+        for _, GroupMember in pairs(CC.GroupData) do
+            if GroupMember.isAddonUser then
+                countAddonUsers = countAddonUsers + 1
+            end
         end
     end
 
@@ -1002,7 +1209,79 @@ function Module:UpdateData()
     self.ContainerAddonUsers.Title:SetText(self:GetTitleWithIcon(AddonUsersIcon, string.format("ADDON USERS: |cFFFFFF%d/%d|r", countAddonUsers, expectedSize)))
 
     ----------------------------------------------------------------------------------------------------
-    -- [D] DRAW SHAPE
+    -- ARKASIS ASSISTANT
+    ----------------------------------------------------------------------------------------------------
+    self.activeArkasisUserLabels = 0
+    local arkasisZoneName = CC.ArkasisAssistant:GetZoneNameFromZoneId(currentZoneId)
+    local arkasisSideId = CC.ArkasisAssistant:GetSideIdFromZoneId(currentZoneId)
+    local arkasisSideName = CC.ArkasisAssistant:GetSideNameFromSideId(arkasisSideId)
+    self.ArkasisAssistantPositionLabel:SetText(string.format("Current zone: |cFFFFFF[%s]|r\nYour saved stack: %s", arkasisZoneName, arkasisSideName))
+
+    local ColorNormal = CC.ArkasisAssistant.SV.enableGameAoeFriendlyColor and CC.GetGameAoeFriendlyColor() or CC.ArkasisAssistant.SV.Color or {1, 0.875, 0, 1}
+    self.ArkasisAssistantButtonSet1:SetCustomColors(ColorNormal)
+    self.ArkasisAssistantButtonSet2:SetCustomColors(ColorNormal)
+    self.ArkasisAssistantButtonSet3:SetCustomColors(ColorNormal)
+
+    if self.SV.isOpenArkasisAssistant then
+        ZO_ClearTable(self.ArkasisSortBuffer)
+
+        for displayName, GroupMember in pairs(CC.GroupData) do
+            if GroupMember.ArkasisAssistant and GroupMember.ArkasisAssistant.sideId == arkasisSideId and arkasisSideId ~= 0 and GroupMember.ArkasisAssistant.zoneId == currentZoneId then
+                table.insert(self.ArkasisSortBuffer, {
+                    displayName = displayName,
+                    GroupMember = GroupMember
+                })
+            end
+        end
+
+        table.sort(self.ArkasisSortBuffer, function(A, B) return A.displayName < B.displayName end)
+
+        for _, Data in ipairs(self.ArkasisSortBuffer) do
+            self.activeArkasisUserLabels = self.activeArkasisUserLabels + 1
+            local Label = self:GetOrCreateLabel(self.ArkasisUserLabels, "ArkasisUserLabels", self.activeArkasisUserLabels, self.ContainerArkasisAssistant.Content, TEXT_ALIGN_LEFT)
+
+            local GroupMember = Data.GroupMember
+            local roleIcon = self:GetPlayerIconByRole(GroupMember.selectedRole)
+            local isEquipped = GroupMember.ArkasisAssistant.isEquipped or 0
+            local shortName = self:GetShortName(Data.displayName, self.maxLengthDisplayName)
+            local sideName = CC.ArkasisAssistant:GetSideNameFromSideId(GroupMember.ArkasisAssistant.sideId)
+
+            local stringSet = ""
+            if isEquipped ~= 0 then
+                local setName = CC.ArkasisAssistant:GetSetNameFromStatusId(isEquipped)
+                stringSet = string.format(" - |cFFFFFF[%s]|r", setName)
+            end
+
+            Label:SetText(string.format("%s %s - %s%s", roleIcon, shortName, sideName, stringSet))
+        end
+
+        -- IS EMPTY
+        if self.activeArkasisUserLabels == 0 then
+            self.activeArkasisUserLabels = 1
+            local Label = self:GetOrCreateLabel(self.ArkasisUserLabels, "ArkasisUserLabels", self.activeArkasisUserLabels, self.ContainerArkasisAssistant.Content, TEXT_ALIGN_LEFT)
+            if arkasisSideId == 0 then
+                Label:SetText("You are unassigned.")
+            else
+                Label:SetText("No partners in your stack.")
+            end
+        end
+    end
+
+    self:HideUnusedLabels(self.ArkasisUserLabels, self.activeArkasisUserLabels)
+    self.ContainerArkasisAssistant.Title:SetText(self:GetTitleWithIcon(CC.ArkasisAssistant, "ARKASIS ASSISTANT"))
+
+    if CC.DisplayNotification.arkasisEndTime > currentTime then
+        local remaining = math.ceil(CC.DisplayNotification.arkasisEndTime - currentTime)
+        self.ArkasisAssistantButtonToggle:SetText(string.format("ARKASIS %d Sec", remaining))
+        self.ArkasisAssistantButtonToggle:SetCustomColors(self.RD_NORMAL)
+    else
+        local configuredSecs = (CC.ArkasisAssistant.SV.durationMs / 1000) or 5
+        self.ArkasisAssistantButtonToggle:SetText(string.format("ARKASIS %d Sec", configuredSecs))
+        self.ArkasisAssistantButtonToggle:SetCustomColors(self.YL_NORMAL)
+    end
+
+    ----------------------------------------------------------------------------------------------------
+    -- DRAW SHAPE
     ----------------------------------------------------------------------------------------------------
     self.DrawShapeContainer.Title:SetText(self:GetTitleWithIcon(CC.DrawShape, "DRAW SHAPE"))
 
@@ -1014,7 +1293,7 @@ function Module:UpdateData()
     self.DrawShapeLabelValueZ:SetText(string.format("Height: %dm", CC.DrawShape.SV.height / 100))
 
     ----------------------------------------------------------------------------------------------------
-    -- [L] LAUNCH PAD
+    -- LAUNCH PAD
     ----------------------------------------------------------------------------------------------------
     self.ContainerLaunchPad.Title:SetText(self:GetTitleWithIcon(CC.LaunchPad, "LAUNCH PAD"))
 
@@ -1038,12 +1317,12 @@ function Module:UpdateData()
     self.LaunchPadLabelToggle:SetColor(r, g, b, 1)
 
     ----------------------------------------------------------------------------------------------------
-    -- [P] POINTER
+    -- POINTER
     ----------------------------------------------------------------------------------------------------
     self.PointerContainer.Title:SetText(self:GetTitleWithIcon(CC.Pointer, "3D POINTER"))
 
     ----------------------------------------------------------------------------------------------------
-    -- [R] RAIDLEAD TOOLS
+    -- RAIDLEAD TOOLS
     ----------------------------------------------------------------------------------------------------
     self.ContainerRaidleadTools.Title:SetText(self:GetTitleWithIcon(CC.RaidleadTools, "RL TOOLS & TIMERS"))
 
@@ -1073,11 +1352,11 @@ function Module:UpdateData()
     end
 
     -- UPDATE BUTTON VOTE START
-    local voteData = CC.RaidleadTools.VoteData
-    if voteData and voteData.endTime > currentTime then
-        local stringYES = string.format("|c00FF00%d|r", voteData.yes)
-        local stringNO = string.format("|cFF0000%d|r", voteData.no)
-        local stringIDC = string.format("|cFFDF00%d|r", voteData.idc)
+    local VoteData = CC.RaidleadTools.VoteData
+    if VoteData and VoteData.endTime > currentTime then
+        local stringYES = string.format("|c00FF00%d|r", VoteData.yes)
+        local stringNO = string.format("|cFF0000%d|r", VoteData.no)
+        local stringIDC = string.format("|cFFDF00%d|r", VoteData.idc)
         self.ButtonVoteStart:SetText(string.format("STOP %s - %s - %s", stringYES, stringNO, stringIDC))
         self.ButtonVoteStart:SetCustomColors(self.RD_NORMAL)
     else
@@ -1086,7 +1365,7 @@ function Module:UpdateData()
     end
 
     ----------------------------------------------------------------------------------------------------
-    -- [S] SLAYER ASSISTANT
+    -- SLAYER ASSISTANT
     ----------------------------------------------------------------------------------------------------
     local countSlayerSetUsers = 0
     self.activeSlayerSetUserLabels = 0
@@ -1101,25 +1380,43 @@ function Module:UpdateData()
     self.SlayerAssistantButtonSetLeft:SetCustomColors(ColorLeft)
     self.SlayerAssistantButtonSetRight:SetCustomColors(ColorRight)
 
-    for displayName, User in pairs(CC.UserData) do
-        if User.SlayerAssistant and User.SlayerAssistant.isEquipped ~= CC.SlayerAssistant.SET_STATUS_NONE and User.SlayerAssistant.zoneId == currentZoneId then
+    for displayName, GroupMember in pairs(CC.GroupData) do
+        if GroupMember.SlayerAssistant and GroupMember.SlayerAssistant.isEquipped ~= CC.SlayerAssistant.SET_STATUS_NONE and GroupMember.SlayerAssistant.zoneId == currentZoneId then
             countSlayerSetUsers = countSlayerSetUsers + 1
-            if self.SV.isOpenSlayerAssistant then
-                self.activeSlayerSetUserLabels = self.activeSlayerSetUserLabels + 1
-                local Label = self:GetOrCreateLabel(self.SlayerSetUserLabels, "SlayerSetUserLabels", self.activeSlayerSetUserLabels, self.ContainerSlayerAssistant.Content, TEXT_ALIGN_LEFT)
+        end
+    end
 
-                local isEquipped = User.SlayerAssistant.isEquipped or CC.SlayerAssistant.SET_STATUS_NONE
-                local shortName = self:GetShortName(displayName, self.maxLengthDisplayName)
-                local sideName = CC.SlayerAssistant:GetSideNameFromSideId(User.SlayerAssistant.sideId)
+    if self.SV.isOpenSlayerAssistant then
+        ZO_ClearTable(self.SlayerSortBuffer)
 
-                local stringSet = ""
-                if isEquipped ~= CC.SlayerAssistant.SET_STATUS_NONE then
-                    local setName = CC.SlayerAssistant:GetSetNameFromStatusId(isEquipped)
-                    stringSet = string.format(" - |cFFFFFF[%s]|r", setName)
-                end
-
-                Label:SetText(string.format("%s - %s%s", shortName, sideName, stringSet))
+        for displayName, GroupMember in pairs(CC.GroupData) do
+            if GroupMember.SlayerAssistant and GroupMember.SlayerAssistant.isEquipped ~= CC.SlayerAssistant.SET_STATUS_NONE and GroupMember.SlayerAssistant.zoneId == currentZoneId then
+                table.insert(self.SlayerSortBuffer, {
+                    displayName = displayName,
+                    GroupMember = GroupMember
+                })
             end
+        end
+
+        table.sort(self.SlayerSortBuffer, function(A, B) return A.displayName < B.displayName end)
+
+        for _, Data in ipairs(self.SlayerSortBuffer) do
+            self.activeSlayerSetUserLabels = self.activeSlayerSetUserLabels + 1
+            local Label = self:GetOrCreateLabel(self.SlayerSetUserLabels, "SlayerSetUserLabels", self.activeSlayerSetUserLabels, self.ContainerSlayerAssistant.Content, TEXT_ALIGN_LEFT)
+
+            local GroupMember = Data.GroupMember
+            local roleIcon = self:GetPlayerIconByRole(GroupMember.selectedRole)
+            local isEquipped = GroupMember.SlayerAssistant.isEquipped or CC.SlayerAssistant.SET_STATUS_NONE
+            local shortName = self:GetShortName(Data.displayName, self.maxLengthDisplayName)
+            local sideName = CC.SlayerAssistant:GetSideNameFromSideId(GroupMember.SlayerAssistant.sideId)
+
+            local stringSet = ""
+            if isEquipped ~= CC.SlayerAssistant.SET_STATUS_NONE then
+                local setName = CC.SlayerAssistant:GetSetNameFromStatusId(isEquipped)
+                stringSet = string.format(" - |cFFFFFF[%s]|r", setName)
+            end
+
+            Label:SetText(string.format("%s %s - %s%s", roleIcon, shortName, sideName, stringSet))
         end
     end
 
@@ -1138,63 +1435,90 @@ function Module:UpdateData()
     end
 
     ----------------------------------------------------------------------------------------------------
-    -- [K] ARKASIS ASSISTANT
+    -- SPAULDER OF RUIN
     ----------------------------------------------------------------------------------------------------
-    self.activeArkasisUserLabels = 0
-    local arkasisZoneName = CC.ArkasisAssistant:GetZoneNameFromZoneId(currentZoneId)
-    local arkasisSideId = CC.ArkasisAssistant:GetSideIdFromZoneId(currentZoneId)
-    local arkasisSideName = CC.ArkasisAssistant:GetSideNameFromSideId(arkasisSideId)
-    self.ArkasisAssistantPositionLabel:SetText(string.format("Current zone: |cFFFFFF[%s]|r\nYour saved stack: %s", arkasisZoneName, arkasisSideName))
+    self.activeSpaulderUserLabels = 0
 
-    local ColorNormal = CC.ArkasisAssistant.SV.enableGameAoeFriendlyColor and CC.GetGameAoeFriendlyColor() or CC.ArkasisAssistant.SV.Color or {1, 0.875, 0, 1}
-    self.ArkasisAssistantButtonSet1:SetCustomColors(ColorNormal)
-    self.ArkasisAssistantButtonSet2:SetCustomColors(ColorNormal)
-    self.ArkasisAssistantButtonSet3:SetCustomColors(ColorNormal)
+    if self.SV.isOpenSpaulderOfRuin then
+        ZO_ClearTable(self.SpaulderSortBuffer)
 
-    for displayName, User in pairs(CC.UserData) do
-        if User.ArkasisAssistant and User.ArkasisAssistant.sideId == arkasisSideId and arkasisSideId ~= CC.ArkasisAssistant.SIDE_NONE and User.ArkasisAssistant.zoneId == currentZoneId then
-            if self.SV.isOpenArkasisAssistant then
-                self.activeArkasisUserLabels = self.activeArkasisUserLabels + 1
-                local Label = self:GetOrCreateLabel(self.ArkasisUserLabels, "ArkasisUserLabels", self.activeArkasisUserLabels, self.ContainerArkasisAssistant.Content, TEXT_ALIGN_LEFT)
-
-                local isEquipped = User.ArkasisAssistant.isEquipped or CC.ArkasisAssistant.SET_STATUS_NONE
-                local shortName = self:GetShortName(displayName, self.maxLengthDisplayName)
-                local sideName = CC.ArkasisAssistant:GetSideNameFromSideId(User.ArkasisAssistant.sideId)
-
-                local stringSet = ""
-                if isEquipped ~= CC.ArkasisAssistant.SET_STATUS_NONE then
-                    local setName = CC.ArkasisAssistant:GetSetNameFromStatusId(isEquipped)
-                    stringSet = string.format(" - |cFFFFFF[%s]|r", setName)
-                end
-
-                Label:SetText(string.format("%s - %s%s", shortName, sideName, stringSet))
+        for displayName, GroupMember in pairs(CC.GroupData) do
+            if GroupMember.isOnline then
+                table.insert(self.SpaulderSortBuffer, {
+                    displayName = displayName,
+                    unitTag = GroupMember.unitTag,
+                    selectedRole = GroupMember.selectedRole,
+                    distance = GroupMember.distance or 9999,
+                })
             end
         end
-    end
 
-    -- IS EMPTY
-    if self.SV.isOpenArkasisAssistant and self.activeArkasisUserLabels == 0 then
-        self.activeArkasisUserLabels = 1
-        local Label = self:GetOrCreateLabel(self.ArkasisUserLabels, "ArkasisUserLabels", self.activeArkasisUserLabels, self.ContainerArkasisAssistant.Content, TEXT_ALIGN_LEFT)
-        if arkasisSideId == CC.ArkasisAssistant.SIDE_NONE then
-            Label:SetText("You are unassigned.")
-        else
-            Label:SetText("No partners in your stack.")
+        table.sort(self.SpaulderSortBuffer, function(A, B) return A.displayName < B.displayName end)
+
+        for _, Player in ipairs(self.SpaulderSortBuffer) do
+            self.activeSpaulderUserLabels = self.activeSpaulderUserLabels + 1
+            local Label = self:GetOrCreateLabel(self.SpaulderUserLabels, "SpaulderUserLabels", self.activeSpaulderUserLabels, self.ContainerSpaulderOfRuin.Content, TEXT_ALIGN_LEFT)
+
+            -- CLICK
+            if not Label.isInteractive then
+                Label:SetMouseEnabled(true)
+                Label:SetHandler("OnMouseEnter", function(Control)
+                    Control:SetColor(unpack(self.ESO_HIGHLIGHT))
+                    InitializeTooltip(InformationTooltip, Control, BOTTOM, 0, 0)
+                    SetTooltipText(InformationTooltip, "Click to toggle [SOR].")
+                end)
+                Label:SetHandler("OnMouseExit", function(Control)
+                    Control:SetColor(unpack(self.ESO_NORMAL))
+                    ClearTooltip(InformationTooltip)
+                end)
+                Label:SetHandler("OnMouseUp", function(Control, button, upInside)
+                    if upInside and Control.targetName then
+                        local SV = CC.SpaulderOfRuin.SV
+
+                        if SV.SavedPlayers[Control.targetName] then
+                            SV.SavedPlayers[Control.targetName] = nil
+                        else
+                            SV.SavedPlayers[Control.targetName] = true
+                        end
+                        CC.DisplayPanel:UpdateData()
+                    end
+                end)
+                Label.isInteractive = true
+            end
+
+            Label.targetName = Player.displayName
+
+            local hasBuff = CC.SpaulderOfRuin:HasAuraOfPride(Player.unitTag)
+            local isSaved = CC.SpaulderOfRuin.SV.SavedPlayers[Player.displayName] and true or false
+
+            local shortName = self:GetShortName(Player.displayName, self.maxLengthDisplayName)
+            local roleIcon = self:GetPlayerIconByRole(Player.selectedRole)
+            local savedStr = isSaved and " |cFF9F3F[SOR]|r" or ""
+            local distanceStr = Player.distance == 9999 and "N/A" or string.format("%.1fm", Player.distance)
+
+            if hasBuff and isSaved then
+                shortName = CC.GetHexColorFromArray(self.GN_NORMAL) .. shortName .. "|r"
+            elseif hasBuff and not isSaved then
+                shortName = CC.GetHexColorFromArray(self.YL_NORMAL) .. shortName .. "|r"
+            elseif not hasBuff and isSaved then
+                shortName = CC.GetHexColorFromArray(self.RD_NORMAL) .. shortName .. "|r"
+            end
+
+            Label:SetText(string.format("%s %s%s - %s", roleIcon, shortName, savedStr, distanceStr))
+        end
+
+        if self.activeSpaulderUserLabels == 0 then
+            self.activeSpaulderUserLabels = 1
+            local Label = self:GetOrCreateLabel(self.SpaulderUserLabels, "SpaulderUserLabels", 1, self.ContainerSpaulderOfRuin.Content, TEXT_ALIGN_LEFT)
+            Label.targetName = nil
+            Label:SetMouseEnabled(false)
+            Label:SetColor(unpack(self.ESO_MUTED))
+            Label:SetText("No players found.")
         end
     end
 
-    self:HideUnusedLabels(self.ArkasisUserLabels, self.activeArkasisUserLabels)
-    self.ContainerArkasisAssistant.Title:SetText(self:GetTitleWithIcon(CC.ArkasisAssistant, "ARKASIS ASSISTANT"))
-
-    if CC.DisplayNotification.arkasisEndTime > currentTime then
-        local remaining = math.ceil(CC.DisplayNotification.arkasisEndTime - currentTime)
-        self.ArkasisAssistantButtonToggle:SetText(string.format("ARKASIS %d Sec", remaining))
-        self.ArkasisAssistantButtonToggle:SetCustomColors(self.RD_NORMAL)
-    else
-        local configuredSecs = (CC.ArkasisAssistant.SV.durationMs / 1000) or 5
-        self.ArkasisAssistantButtonToggle:SetText(string.format("ARKASIS %d Sec", configuredSecs))
-        self.ArkasisAssistantButtonToggle:SetCustomColors(self.YL_NORMAL)
-    end
+    self:HideUnusedLabels(self.SpaulderUserLabels, self.activeSpaulderUserLabels)
+    self.ContainerSpaulderOfRuin.Title:SetText(self:GetTitleWithIcon(CC.SpaulderOfRuin, "SPAULDER OF RUIN"))
 
     -- CALC DIMENSIONS
     self:UpdateDimensions()
@@ -1233,12 +1557,13 @@ function Module:UpdateDimensions()
 
     if self.SV.isMinimized then
         self.ContainerAddonUsers.Control:SetHidden(true)
+        self.ContainerArkasisAssistant.Control:SetHidden(true)
         self.DrawShapeContainer.Control:SetHidden(true)
         self.ContainerLaunchPad.Control:SetHidden(true)
         self.PointerContainer.Control:SetHidden(true)
         if self.ContainerRaidleadTools then self.ContainerRaidleadTools.Control:SetHidden(true) end
         self.ContainerSlayerAssistant.Control:SetHidden(true)
-        self.ContainerArkasisAssistant.Control:SetHidden(true)
+        self.ContainerSpaulderOfRuin.Control:SetHidden(true)
         self.LabelAuthor:SetHidden(true)
 
         self.Parent:SetWidth(self.SV.panelWidth)
@@ -1246,11 +1571,13 @@ function Module:UpdateDimensions()
         return
     else
         self.ContainerAddonUsers.Control:SetHidden(false)
+        self.ContainerArkasisAssistant.Control:SetHidden(false)
         self.DrawShapeContainer.Control:SetHidden(false)
         self.ContainerLaunchPad.Control:SetHidden(false)
         self.PointerContainer.Control:SetHidden(false)
+        if self.ContainerRaidleadTools then self.ContainerRaidleadTools.Control:SetHidden(false) end
         self.ContainerSlayerAssistant.Control:SetHidden(false)
-        self.ContainerArkasisAssistant.Control:SetHidden(false)
+        self.ContainerSpaulderOfRuin.Control:SetHidden(false)
         self.LabelAuthor:SetHidden(false)
     end
 
@@ -1279,7 +1606,7 @@ function Module:UpdateDimensions()
         end
     end
 
-    -- [A] ADDON USERS
+    -- ADDON USERS
     ProcessContainer(self.ContainerAddonUsers, function(Content, width)
         local innerY = Layout.paddingTop -- TEXT
 
@@ -1298,7 +1625,81 @@ function Module:UpdateDimensions()
         return innerY + Layout.heightElement
     end)
 
-    -- [D] DRAW SHAPE
+    -- ARKASIS ASSISTANT
+    ProcessContainer(self.ContainerArkasisAssistant, function(Content, width)
+        local innerY = Layout.paddingTop
+        local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
+        local buttonThird = (width - (2 * Layout.padding) - (2 * Layout.spacing)) / 3
+        local buttonFull = width - (2 * Layout.padding)
+
+        self.ArkasisAssistantPositionLabel:SetDimensions(width - (2 * Layout.padding), 0)
+        self.ArkasisAssistantPositionLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+        innerY = innerY + self.ArkasisAssistantPositionLabel:GetTextHeight() + Layout.spacing
+
+        self.ArkasisAssistantButtonSet1:SetDimensions(buttonThird, Layout.heightElement)
+        self.ArkasisAssistantButtonSet1:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+        self.ArkasisAssistantButtonSet2:SetDimensions(buttonThird, Layout.heightElement)
+        self.ArkasisAssistantButtonSet2:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonSet1, TOPRIGHT, Layout.spacing, 0)
+        self.ArkasisAssistantButtonSet3:SetDimensions(buttonThird, Layout.heightElement)
+        self.ArkasisAssistantButtonSet3:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
+        innerY = innerY + Layout.heightElement + Layout.spacing
+
+        if isRaidlead then
+            self.ArkasisAssistantButtonAssign:SetHidden(false)
+            self.ArkasisAssistantButtonStatus:SetHidden(false)
+            self.ArkasisAssistantButtonAssign:SetDimensions(buttonHalf, Layout.heightElement)
+            self.ArkasisAssistantButtonAssign:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+            self.ArkasisAssistantButtonStatus:SetDimensions(buttonHalf, Layout.heightElement)
+            self.ArkasisAssistantButtonStatus:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
+            innerY = innerY + Layout.heightElement + Layout.spacing
+
+            local widthArrowSingle = Layout.heightElement * 1.0
+            local widthArrowDouble = Layout.heightElement * 1.0
+            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.spacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
+
+            self.ArkasisAssistantButtonMinus5:SetHidden(false)
+            self.ArkasisAssistantButtonMinus1:SetHidden(false)
+            self.ArkasisAssistantButtonToggle:SetHidden(false)
+            self.ArkasisAssistantButtonPlus1:SetHidden(false)
+            self.ArkasisAssistantButtonPlus5:SetHidden(false)
+
+            self.ArkasisAssistantButtonMinus5:SetDimensions(widthArrowDouble, Layout.heightElement)
+            self.ArkasisAssistantButtonMinus5:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+
+            self.ArkasisAssistantButtonMinus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.ArkasisAssistantButtonMinus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus5, TOPRIGHT, Layout.spacing, 0)
+
+            self.ArkasisAssistantButtonToggle:SetDimensions(widthToggle, Layout.heightElement)
+            self.ArkasisAssistantButtonToggle:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus1, TOPRIGHT, Layout.spacing, 0)
+
+            self.ArkasisAssistantButtonPlus1:SetDimensions(widthArrowSingle, Layout.heightElement)
+            self.ArkasisAssistantButtonPlus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonToggle, TOPRIGHT, Layout.spacing, 0)
+
+            self.ArkasisAssistantButtonPlus5:SetDimensions(widthArrowDouble, Layout.heightElement)
+            self.ArkasisAssistantButtonPlus5:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
+
+            innerY = innerY + Layout.heightElement + Layout.spacing
+        else
+            self.ArkasisAssistantButtonAssign:SetHidden(true)
+            self.ArkasisAssistantButtonStatus:SetHidden(true)
+
+            self.ArkasisAssistantButtonMinus5:SetHidden(true)
+            self.ArkasisAssistantButtonMinus1:SetHidden(true)
+            self.ArkasisAssistantButtonToggle:SetHidden(true)
+            self.ArkasisAssistantButtonPlus1:SetHidden(true)
+            self.ArkasisAssistantButtonPlus5:SetHidden(true)
+        end
+
+        for i = 1, self.activeArkasisUserLabels do
+            local Label = self.ArkasisUserLabels[i]
+            Label:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+            innerY = innerY + Label:GetTextHeight()
+        end
+
+        return innerY
+    end)
+
+    -- DRAW SHAPE
     ProcessContainer(self.DrawShapeContainer, function(Content, width)
         local innerY = Layout.paddingTop
         local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
@@ -1393,7 +1794,7 @@ function Module:UpdateDimensions()
         return innerY + Layout.heightElement
     end)
 
-    -- [L] LAUNCH PAD
+    -- LAUNCH PAD
     ProcessContainer(self.ContainerLaunchPad, function(Content, width)
         local innerY = Layout.paddingTop
         local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
@@ -1459,7 +1860,7 @@ function Module:UpdateDimensions()
         return innerY + Layout.heightElement
     end)
 
-    -- [P] POINTER
+    -- POINTER
     ProcessContainer(self.PointerContainer, function(Content, width)
         local innerY = Layout.paddingTop -- TEXT
 
@@ -1480,7 +1881,7 @@ function Module:UpdateDimensions()
         return innerY + Layout.heightElement
     end)
 
-    -- [R] RAIDLEAD TOOLS
+    -- RAIDLEAD TOOLS
     if isRaidlead then
         self.ContainerRaidleadTools.Control:SetHidden(false)
         ProcessContainer(self.ContainerRaidleadTools, function(Content, width)
@@ -1551,7 +1952,7 @@ function Module:UpdateDimensions()
         end
     end
 
-    -- [S] SLAYER ASSSISTANT
+    -- SLAYER ASSSISTANT
     ProcessContainer(self.ContainerSlayerAssistant, function(Content, width)
         local innerY = Layout.paddingTop
         local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
@@ -1622,80 +2023,34 @@ function Module:UpdateDimensions()
         return innerY
     end)
 
-    -- [K] ARKASIS ASSISTANT
-    ProcessContainer(self.ContainerArkasisAssistant, function(Content, width)
+    -- SPAULDER OF RUIN
+    ProcessContainer(self.ContainerSpaulderOfRuin, function(Content, width)
         local innerY = Layout.paddingTop
         local buttonHalf = (width - (2 * Layout.padding) - Layout.spacing) / 2
-        local buttonThird = (width - (2 * Layout.padding) - (2 * Layout.spacing)) / 3
-        local buttonFull = width - (2 * Layout.padding)
 
-        self.ArkasisAssistantPositionLabel:SetDimensions(width - (2 * Layout.padding), 0)
-        self.ArkasisAssistantPositionLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        innerY = innerY + self.ArkasisAssistantPositionLabel:GetTextHeight() + Layout.spacing
+        -- INFO
+        self.SpaulderInfoLabel:SetDimensions(width - (2 * Layout.padding), 0)
+        self.SpaulderInfoLabel:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+        innerY = innerY + self.SpaulderInfoLabel:GetTextHeight() + Layout.spacing
 
-        self.ArkasisAssistantButtonSet1:SetDimensions(buttonThird, Layout.heightElement)
-        self.ArkasisAssistantButtonSet1:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-        self.ArkasisAssistantButtonSet2:SetDimensions(buttonThird, Layout.heightElement)
-        self.ArkasisAssistantButtonSet2:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonSet1, TOPRIGHT, Layout.spacing, 0)
-        self.ArkasisAssistantButtonSet3:SetDimensions(buttonThird, Layout.heightElement)
-        self.ArkasisAssistantButtonSet3:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-        innerY = innerY + Layout.heightElement + Layout.spacing
-
-        if isRaidlead then
-            self.ArkasisAssistantButtonAssign:SetHidden(false)
-            self.ArkasisAssistantButtonStatus:SetHidden(false)
-            self.ArkasisAssistantButtonAssign:SetDimensions(buttonHalf, Layout.heightElement)
-            self.ArkasisAssistantButtonAssign:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-            self.ArkasisAssistantButtonStatus:SetDimensions(buttonHalf, Layout.heightElement)
-            self.ArkasisAssistantButtonStatus:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-            innerY = innerY + Layout.heightElement + Layout.spacing
-
-            local widthArrowSingle = Layout.heightElement * 1.0
-            local widthArrowDouble = Layout.heightElement * 1.0
-            local widthToggle = width - (2 * Layout.padding) - (4 * Layout.spacing) - (2 * widthArrowSingle) - (2 * widthArrowDouble)
-
-            self.ArkasisAssistantButtonMinus5:SetHidden(false)
-            self.ArkasisAssistantButtonMinus1:SetHidden(false)
-            self.ArkasisAssistantButtonToggle:SetHidden(false)
-            self.ArkasisAssistantButtonPlus1:SetHidden(false)
-            self.ArkasisAssistantButtonPlus5:SetHidden(false)
-
-            self.ArkasisAssistantButtonMinus5:SetDimensions(widthArrowDouble, Layout.heightElement)
-            self.ArkasisAssistantButtonMinus5:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
-
-            self.ArkasisAssistantButtonMinus1:SetDimensions(widthArrowSingle, Layout.heightElement)
-            self.ArkasisAssistantButtonMinus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus5, TOPRIGHT, Layout.spacing, 0)
-
-            self.ArkasisAssistantButtonToggle:SetDimensions(widthToggle, Layout.heightElement)
-            self.ArkasisAssistantButtonToggle:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonMinus1, TOPRIGHT, Layout.spacing, 0)
-
-            self.ArkasisAssistantButtonPlus1:SetDimensions(widthArrowSingle, Layout.heightElement)
-            self.ArkasisAssistantButtonPlus1:SetAnchor(TOPLEFT, self.ArkasisAssistantButtonToggle, TOPRIGHT, Layout.spacing, 0)
-
-            self.ArkasisAssistantButtonPlus5:SetDimensions(widthArrowDouble, Layout.heightElement)
-            self.ArkasisAssistantButtonPlus5:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
-
-            innerY = innerY + Layout.heightElement + Layout.spacing
-        else
-            self.ArkasisAssistantButtonAssign:SetHidden(true)
-            self.ArkasisAssistantButtonStatus:SetHidden(true)
-
-            self.ArkasisAssistantButtonMinus5:SetHidden(true)
-            self.ArkasisAssistantButtonMinus1:SetHidden(true)
-            self.ArkasisAssistantButtonToggle:SetHidden(true)
-            self.ArkasisAssistantButtonPlus1:SetHidden(true)
-            self.ArkasisAssistantButtonPlus5:SetHidden(true)
-        end
-
-        for i = 1, self.activeArkasisUserLabels do
-            local Label = self.ArkasisUserLabels[i]
+        -- LIST
+        for i = 1, self.activeSpaulderUserLabels do
+            local Label = self.SpaulderUserLabels[i]
             Label:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
             innerY = innerY + Label:GetTextHeight()
         end
+        innerY = innerY + Layout.spacing
+
+        -- BUTTONS
+        self.SpaulderButtonKick:SetDimensions(buttonHalf, Layout.heightElement)
+        self.SpaulderButtonKick:SetAnchor(TOPLEFT, Content, TOPLEFT, Layout.padding, innerY)
+
+        self.SpaulderButtonReinvite:SetDimensions(buttonHalf, Layout.heightElement)
+        self.SpaulderButtonReinvite:SetAnchor(TOPRIGHT, Content, TOPRIGHT, -Layout.padding, innerY)
+        innerY = innerY + Layout.heightElement + Layout.spacing
 
         return innerY
     end)
-
 
     -- AUTHOR
     currentY = currentY - Layout.spacing + Layout.margin
@@ -1768,12 +2123,13 @@ end
 
 function Module:CloseAll()
     self.SV.isOpenAddonUsers       = false
-    self.SV.isOpenSlayerAssistant  = false
     self.SV.isOpenArkasisAssistant = false
-    self.SV.isOpenPointer          = false
-    self.SV.isOpenLaunchPad        = false
-    self.SV.isOpenRaidleadTools    = false
     self.SV.isOpenDrawShape        = false
+    self.SV.isOpenLaunchPad        = false
+    self.SV.isOpenPointer          = false
+    self.SV.isOpenRaidleadTools    = false
+    self.SV.isOpenSlayerAssistant  = false
+    self.SV.isOpenSpaulderOfRuin   = false
 end
 
 ----------------------------------------------------------------------------------------------------

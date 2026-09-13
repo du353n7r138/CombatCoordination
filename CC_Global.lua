@@ -4,8 +4,8 @@
 CombatCoordination = {
     NAME = "CombatCoordination",
     AUTHOR = "@Duesentrieb",
-    ADDONVERSION = 0007,
-    VERSION = "20260903",
+    ADDONVERSION = 0008,
+    VERSION = "20260913",
     CHAT = "|cFF7F00[CC]|r",
 
     ----------------------------------------------------------------------------------------------------
@@ -28,7 +28,7 @@ CombatCoordination = {
 
     Modules = {},
     UnitNames = {},
-    UserData = {},
+    GroupData = {},
 
     ChatButton = nil,
 

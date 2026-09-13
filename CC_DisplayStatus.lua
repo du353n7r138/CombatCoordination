@@ -40,8 +40,8 @@ function Module:Create()
     if self.Parent then return end
 
     if not self.SV.offsetX or not self.SV.offsetY then
-        self.SV.offsetX = (GuiRoot:GetWidth() - self.SV.width) / 2
-        self.SV.offsetY = (GuiRoot:GetHeight() - self.SV.height) / 2
+        self.SV.offsetX = 0
+        self.SV.offsetY = 0
     end
 
     local function HandleMouseUp(control, button, upInside, ctrl, alt, shift, command)
@@ -226,20 +226,20 @@ end
 function Module:Update()
     if not self.Parent then return end
 
-    local count = 0
+    local counter = 0
     local hasPlayer = false
     local playerName = GetUnitDisplayName("player")
 
-    -- DESYNC NIL ERROR ON USERDATA.. THANKS ZOS.
-    -- THAT SHOULD NOT BE POSSIBLE BUT WELL.. IT WAS.
-    for displayName, _ in pairs(CC.UserData or {}) do
+    for displayName, GroupMember in pairs(CC.GroupData or {}) do
         if displayName == playerName then hasPlayer = true end
-        count = count + 1
+        if GroupMember.isAddonUser or displayName == playerName then
+            counter = counter + 1
+        end
     end
-    if not hasPlayer then count = count + 1 end
+    if not hasPlayer then counter = counter + 1 end
 
     local expectedSize = math.max(1, GetGroupSize())
-    if count >= expectedSize then
+    if counter >= expectedSize then
         self.Label:SetColor(0, 1, 0, 1)
         self.Background:SetEdgeColor(0, 0.5, 0, 1)
     else
@@ -247,15 +247,15 @@ function Module:Update()
         self.Background:SetEdgeColor(0.5, 0.5, 0, 1)
     end
 
-    self.Label:SetText(tostring(count))
+    self.Label:SetText(tostring(counter))
 end
 
 ----------------------------------------------------------------------------------------------------
 -- RESET POSITION
 ----------------------------------------------------------------------------------------------------
 function Module:ResetPosition()
-    self.SV.offsetX = (GuiRoot:GetWidth() - self.SV.width) / 2
-    self.SV.offsetY = (GuiRoot:GetHeight() - self.SV.height) / 2
+    self.SV.offsetX = 0
+    self.SV.offsetY = 0
 
     if self.Parent then
         self.Parent:ClearAnchors()

@@ -137,6 +137,8 @@ function Module:ResetInstance()
 
         local difficultyName = isVeteranDifficulty and "|c7FFFFF[Veteran]|r" or "|c00FF00[Normal]|r"
         d(string.format("%s Instance reset complete. Restored to: %s", CC.CHAT, difficultyName))
+
+        CC.DisplayNotification:TriggerCustom(2.0, "RESET INSTANCE", "DIFFICULTY: " .. difficultyName)
     end, 500)
 end
 
@@ -226,17 +228,17 @@ end
 -- INIT VOTE DATA
 ----------------------------------------------------------------------------------------------------
 function Module:InitVoteData()
-    local totalUsers = 0 -- DEBUG: SET TO 1
-    for _, _ in pairs(CC.UserData) do
-        totalUsers = totalUsers + 1
+    local totalGroupMembers = 0 -- DEBUG: SET TO 1
+    for _, _ in pairs(CC.GroupData) do
+        totalGroupMembers = totalGroupMembers + 1
     end
 
     self.VoteData.endTime = GetGameTimeSeconds() + self.VOTE_TIMEOUT
     self.VoteData.yes = 0
     self.VoteData.no = 0
     self.VoteData.idc = 0
-    self.VoteData.total = totalUsers
-    self.VoteData.pending = totalUsers
+    self.VoteData.total = totalGroupMembers
+    self.VoteData.pending = totalGroupMembers
     ZO_ClearTable(self.VoteData.VotedTags)
 
     EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "RaidleadTools_Vote_Timeout")
