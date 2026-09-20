@@ -4,7 +4,13 @@ local CC = CombatCoordination
 -- MODULE VARS AND SVARS
 ----------------------------------------------------------------------------------------------------
 local Module = {
-    name = "SkillBlocker",
+    name      = "SkillBlocker",
+    menuName  = "SKILL BLOCKER",
+    iconPath  = "/esoui/art/icons/ability_warrior_015.dds",
+    menuLayer = 0,
+
+    isPreHooked = false,
+    isUpdateLoop = false,
 
     EquippedSkills = {},
     BlockableSkills = {},
@@ -13,8 +19,7 @@ local Module = {
     ShouldBlock = {},
     BlockedSkills = {},
     BlockedModules = {},
-
-    isUpdateLoop = false,
+    PermanentBlocked = {},
 
     FirstBlockTime = {},
     LastBlockTime = {},
@@ -22,7 +27,9 @@ local Module = {
     OverrideTime = {},
 
     Default = {
-        enableDisplayIcon = true,
+        enablePermanentBlocker = true,
+        enablePermanentOverride = false,
+        permanentBlockList = "",
     },
     ---@type table|any
     SV = {},
@@ -32,10 +39,97 @@ local Module = {
 -- CUSTOM ENABLE / DISABLE
 ----------------------------------------------------------------------------------------------------
 function Module:CustomEnable()
+    self:ParsePermanentBlockList()
+    if not self.isPreHooked then
+        self:RegisterPreHook()
+        self.isPreHooked = true
+    end
 end
 
 function Module:CustomDisable()
     self:StopSkillBlockerLoop()
+end
+
+----------------------------------------------------------------------------------------------------
+-- SCRIBING SUPPORT
+----------------------------------------------------------------------------------------------------
+function Module:GetAbilityIdFromSlotNum(slotNum)
+    local abilityId = GetSlotBoundId(slotNum)
+    if GetSlotType(slotNum) == ACTION_TYPE_CRAFTED_ABILITY then
+        abilityId = GetAbilityIdForCraftedAbilityId(abilityId)
+    end
+    return abilityId
+end
+
+----------------------------------------------------------------------------------------------------
+-- PARSE PERMANENT LIST
+----------------------------------------------------------------------------------------------------
+function Module:ParsePermanentBlockList()
+    ZO_ClearTable(self.PermanentBlocked)
+    if not self.SV.enablePermanentBlocker then return end
+
+    local blockString = self.SV.permanentBlockList or ""
+    for abilityString in string.gmatch(blockString, "%d+") do
+        local abilityId = tonumber(abilityString)
+        if abilityId then
+            self.PermanentBlocked[abilityId] = true
+        end
+    end
+end
+
+----------------------------------------------------------------------------------------------------
+-- PRE HOOK
+----------------------------------------------------------------------------------------------------
+function Module:RegisterPreHook()
+    ZO_PreHook("ZO_ActionBar_CanUseActionSlots", function()
+        if ZO_IsTableEmpty(self.BlockedSkills) and ZO_IsTableEmpty(self.PermanentBlocked) then return false end
+
+        -- TRACEBACK
+        local tracebackString = debug.traceback()
+        local slotString = tracebackString:match("keybind = \".*ACTION_BUTTON_(%d)")
+        local slotNum = tonumber(slotString)
+
+        if slotNum then
+            local abilityId = self:GetAbilityIdFromSlotNum(slotNum)
+
+            if abilityId then
+                -- CHECK PERMANENT BLOCK
+                if self.PermanentBlocked[abilityId] then
+                    if self.SV.enablePermanentOverride then
+                        local shouldBlock = self:CheckOverride(slotNum, abilityId)
+
+                        if shouldBlock then
+                            ZO_ActionBar_OnActionButtonUp(slotNum)
+                            return true
+                        end
+
+                        return false -- ALLOW CAST
+                    else
+                        local currentTime = GetGameTimeMilliseconds()
+
+                        if currentTime - (self.LastBlockTime[abilityId] or 0) > 1000 then
+                            CC.DisplayIcon:TriggerAnimation(abilityId)
+                            self.LastBlockTime[abilityId] = currentTime
+                        end
+
+                        ZO_ActionBar_OnActionButtonUp(slotNum)
+                        return true
+                    end
+                end
+
+                -- CHECK DYNAMIC BLOCK
+                if self.BlockedSkills[abilityId] then
+                local shouldBlock = self:CheckOverride(slotNum, abilityId)
+
+                    if shouldBlock then
+                        ZO_ActionBar_OnActionButtonUp(slotNum)
+                        return true
+                    end
+                end
+            end
+        end
+        return false
+    end)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -71,12 +165,6 @@ function Module:StopSkillBlockerLoop()
         self.isUpdateLoop = false
         EVENT_MANAGER:UnregisterForUpdate(CC.NAME .. "SkillBlocker_HandleSkillBlocker")
 
-        if LibSkillBlocker then
-            for abilityId, _ in pairs(self.BlockedSkills) do
-                LibSkillBlocker.UnregisterSkillBlock(CC.NAME .. tostring(abilityId), abilityId)
-            end
-        end
-
         ZO_ClearTable(self.PlayerBuffs)
         ZO_ClearTable(self.ShouldBlock)
         ZO_ClearTable(self.BlockedSkills)
@@ -91,9 +179,6 @@ end
 -- HANDLE BLOCK
 ----------------------------------------------------------------------------------------------------
 function Module:HandleSkillBlocker()
-    -- YEAH YEAH I KNOW.. IT'S IN THE DEPENDENCIES. BUT I MIGHT CHANGE THAT.
-    if not LibSkillBlocker then return end
-
     local _, worldX, worldY, worldZ = GetUnitRawWorldPosition("player")
     local cameraX, _, cameraZ = CC.GetCameraTargetPosition(worldY, 0)
 
@@ -238,16 +323,14 @@ function Module:HandleSkillBlocker()
     -- ADD NEW SKILL TO BLOCKER
     for abilityId, _ in pairs(self.ShouldBlock) do
         if not self.BlockedSkills[abilityId] then
-            LibSkillBlocker.RegisterSkillBlock(CC.NAME .. tostring(abilityId), abilityId, function(slot, ability) return self:CheckOverride(slot, ability) end, false)
-            --CC.DisplayIcon:TriggerAnimation(abilityId)
+            -- CC.DisplayIcon:TriggerAnimation(abilityId)
         end
         self.BlockedSkills[abilityId] = currentTime + 2000
     end
 
-    -- REMOVE OLD FROM LIST / FROM BLOCKER
+    -- REMOVE OLD FROM LIST
     for abilityId, timeoutTime in pairs(self.BlockedSkills) do
         if not self.ShouldBlock[abilityId] or currentTime > timeoutTime then
-            LibSkillBlocker.UnregisterSkillBlock(CC.NAME .. tostring(abilityId), abilityId)
             self.BlockedSkills[abilityId] = nil
 
             self.FirstBlockTime[abilityId] = nil
@@ -305,6 +388,65 @@ function Module:CheckOverride(slotNum, abilityId)
         CC.Debug("|c00FF00SkillBlocker override!|r")
         return false -- DONT BLOCK
     end
+end
+
+----------------------------------------------------------------------------------------------------
+-- LAM2 MENU
+----------------------------------------------------------------------------------------------------
+function Module:GetMenuOptions()
+    local menuIcon = string.format("|t%d:%d:%s|t", CC.SIZE_ICON_LAM_SM, CC.SIZE_ICON_LAM_SM, self.iconPath)
+
+    return {
+        type = "submenu",
+        name = string.format("%s %s", menuIcon, CC.ColorString(self.menuName, "tier2")),
+        controls = {
+            { type = "header", name = CC.ColorString("PERMANENT SKILL BLOCKING", "tier3") },
+            {
+                type = "checkbox",
+                name = "Enable Permanent Blocking",
+                getFunc = function() return self.SV.enablePermanentBlocker end,
+                setFunc = function(value)
+                    self.SV.enablePermanentBlocker = value
+                    self:ParsePermanentBlockList()
+                end,
+                default = self.Default.enablePermanentBlocker,
+                disabled = function() return not CC.SV.enableAddon end,
+            },
+            {
+                type = "checkbox",
+                name = "Enable Override",
+                tooltip = "Casting 3x within 1.5 second bypasses the protocol.",
+                getFunc = function() return self.SV.enablePermanentOverride end,
+                setFunc = function(value) self.SV.enablePermanentOverride = value end,
+                default = self.Default.enablePermanentOverride,
+                disabled = function() return not CC.SV.enableAddon or not self.SV.enablePermanentBlocker end,
+            },
+            {
+                type = "description",
+                text = CC.ColorString("Examples:", "tier2") .. "\n- Blinding Flare (61524)\n- Camouflaged Hunter (40195)\n- Inner Light (40478)\n- Temporal Guard (103564)",
+                width = "full",
+            },
+            {
+                type = "description",
+                text = "Enter skill IDs separated by commas: 61524, 40195, 40478, 103564, ...",
+                width = "full",
+            },
+            {
+                type = "editbox",
+                name = "Permanent Blocked Skill IDs:",
+                isMultiline = true,
+		        isExtraWide = true,
+                width = "full",
+                getFunc = function() return self.SV.permanentBlockList end,
+                setFunc = function(value)
+                    self.SV.permanentBlockList = value
+                    self:ParsePermanentBlockList()
+                end,
+                default = self.Default.permanentBlockList,
+                disabled = function() return not CC.SV.enableAddon or not self.SV.enablePermanentBlocker end,
+            },
+        },
+    }
 end
 
 ----------------------------------------------------------------------------------------------------
